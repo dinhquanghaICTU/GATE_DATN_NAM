@@ -1,0 +1,36 @@
+idf_component_register(
+    SRCS 
+        "ota/ota.c"
+        "wifi/wifi.c"
+        "mqtt/mqtt.c"
+        "ble/ble.c"
+        "flash/flash.c"
+        "hunonic_bridge/hunonic_bridge.c"
+        "hunonic_bridge/hunonic_crypto.c"
+    INCLUDE_DIRS 
+        "ota"
+        "wifi"
+        "mqtt"
+        "ble"
+        "flash"
+        "hunonic_bridge"
+        "secrets"
+        "."
+    REQUIRES 
+        esp_https_ota
+        esp_http_client
+        esp_websocket_client
+        app_update
+        esp_wifi
+        nvs_flash
+        mqtt
+        esp-tls
+        mbedtls
+        bt
+        esp_timer
+        third_party
+        json
+    PRIV_REQUIRES
+        hardware
+        application
+)

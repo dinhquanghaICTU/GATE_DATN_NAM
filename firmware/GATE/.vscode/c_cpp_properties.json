@@ -1,0 +1,28 @@
+{
+    "configurations": [
+        {
+            "name": "ESP-IDF",
+            "compilerPath": "/home/quanghaictu/.espressif/tools/xtensa-esp-elf/esp-13.2.0_20250707/xtensa-esp-elf/bin/xtensa-esp32s3-elf-gcc",
+            "cStandard": "c11",
+            "cppStandard": "c++17",
+            "intelliSenseMode": "linux-gcc-arm",
+            "includePath": [
+                "${workspaceFolder}/**",
+                "${workspaceFolder}/firmware/GATE/**",
+                "${workspaceFolder}/firmware/GATE/managed_components/**",
+                "/home/quanghaictu/esp/esp-idf/components/**"
+            ],
+            "compileCommands": "${workspaceFolder}/firmware/GATE/build/compile_commands.json",
+            "browse": {
+                "path": [
+                    "${workspaceFolder}",
+                    "${workspaceFolder}/firmware/GATE",
+                    "${workspaceFolder}/firmware/GATE/managed_components",
+                    "/home/quanghaictu/esp/esp-idf/components"
+                ],
+                "limitSymbolsToIncludedHeaders": false
+            }
+        }
+    ],
+    "version": 4
+}

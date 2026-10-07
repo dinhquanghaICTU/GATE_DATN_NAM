@@ -1,0 +1,15 @@
+# ESP-IDF build output
+build/
+sdkconfig
+sdkconfig.old
+dependencies.lock
+managed_components/
+
+# Editor files
+.vscode/*
+!.vscode/settings.json
+!.vscode/c_cpp_properties.json
+.cache/
+*.swp
+*.o
+*.d

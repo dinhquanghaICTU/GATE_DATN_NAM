@@ -1,0 +1,19 @@
+# Build outputs
+build/
+sdkconfig
+sdkconfig.old
+dependencies.lock
+managed_components/
+
+# Editor & Temp
+.vscode/*
+!.vscode/settings.json
+!.vscode/c_cpp_properties.json
+.cache/
+*.swp
+*.o
+*.d
+
+# Secrets & Credentials (NEVER commit to Git)
+secrets.h
+**/secrets.h

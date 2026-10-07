@@ -1,0 +1,13 @@
+idf_component_register(
+    SRCS 
+        "flash/flash.c"
+        "ble/ble.c"
+    INCLUDE_DIRS 
+        "flash"
+        "ble"
+        "."
+    REQUIRES 
+        nvs_flash
+        esp_timer
+        bt
+)

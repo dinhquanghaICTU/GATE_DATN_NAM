@@ -1,0 +1,16 @@
+idf_component_register(
+    SRCS 
+        "led/led.c"
+        "button/button.c"
+        "SHT30/SHT30.c"
+    INCLUDE_DIRS 
+        "led"
+        "button"
+        "SHT30"
+        "."
+    REQUIRES 
+        driver
+        esp_timer
+        middle
+        third_party
+)

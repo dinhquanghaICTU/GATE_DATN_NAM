@@ -1,0 +1,16 @@
+idf_component_register(
+    SRCS 
+        "m_state_machine/m_state_machine.c"
+        "gate_controller/gate_controller.c"
+    INCLUDE_DIRS 
+        "m_state_machine"
+        "gate_controller"
+        "."
+    REQUIRES 
+        middle
+        hardware
+        third_party
+        esp_timer
+        nvs_flash
+        freertos
+)

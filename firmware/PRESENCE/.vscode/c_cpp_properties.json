@@ -1,0 +1,28 @@
+{
+    "configurations": [
+        {
+            "name": "ESP-IDF-RISCV",
+            "compilerPath": "/home/quanghaictu/.espressif/tools/riscv32-esp-elf/esp-13.2.0_20250707/riscv32-esp-elf/bin/riscv32-esp-elf-gcc",
+            "cStandard": "c11",
+            "cppStandard": "c++17",
+            "intelliSenseMode": "linux-gcc-arm",
+            "includePath": [
+                "${workspaceFolder}/**",
+                "${workspaceFolder}/firmware/PRESENCE/**",
+                "${workspaceFolder}/firmware/PRESENCE/managed_components/**",
+                "/home/quanghaictu/esp/esp-idf/components/**"
+            ],
+            "compileCommands": "${workspaceFolder}/firmware/PRESENCE/build/compile_commands.json",
+            "browse": {
+                "path": [
+                    "${workspaceFolder}",
+                    "${workspaceFolder}/firmware/PRESENCE",
+                    "${workspaceFolder}/firmware/PRESENCE/managed_components",
+                    "/home/quanghaictu/esp/esp-idf/components"
+                ],
+                "limitSymbolsToIncludedHeaders": false
+            }
+        }
+    ],
+    "version": 4
+}

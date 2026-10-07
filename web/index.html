@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Smart HVAC & Gateway Control Center - DATN NAM</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+  <!-- MQTT.js qua CDN để kết nối WebSocket TLS bảo mật tới HiveMQ Cloud -->
+  <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+</head>
+<body>
+  <div class="app-container">
+    <!-- Header -->
+    <header class="navbar">
+      <div class="brand">
+        <div class="logo-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+          </svg>
+        </div>
+        <div class="brand-text">
+          <h1>IoT Gateway & HVAC Control</h1>
+          <span class="subtitle">Trạm Điều Khiển Trung Tâm &bull; Đồ Án Tốt Nghiệp ICTU</span>
+        </div>
+      </div>
+
+      <div class="nav-actions">
+        <div class="status-badge" id="mqtt-status-badge">
+          <span class="status-dot"></span>
+          <span id="mqtt-status-text">Đang kết nối Cloud...</span>
+        </div>
+        <button class="btn btn-secondary btn-icon" id="btn-sync-devices" title="Đồng bộ danh sách thiết bị">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/>
+          </svg>
+          <span>Đồng bộ</span>
+        </button>
+        <button class="btn btn-secondary btn-icon" id="btn-toggle-settings" title="Cấu hình kết nối">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="3"></circle>
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+          </svg>
+          <span>Cấu hình</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- Modal Cấu hình MQTT -->
+    <div class="modal-overlay hidden" id="modal-settings">
+      <div class="modal-card">
+        <div class="modal-header">
+          <h3>Cấu hình Kết Nối HiveMQ Broker</h3>
+          <button class="btn-close" id="btn-close-settings">&times;</button>
+        </div>
+        <div class="modal-body">
+          <div class="form-group">
+            <label>WSS Broker URI</label>
+            <input type="text" id="cfg-broker" value="wss://20476a36ce36478d90de6d5676587638.s1.eu.hivemq.cloud:8884/mqtt">
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Username</label>
+              <input type="text" id="cfg-user" value="quanghaictu">
+            </div>
+            <div class="form-group">
+              <label>Password</label>
+              <input type="password" id="cfg-pass" value="Zdinhquangha1234">
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Topic Command</label>
+              <input type="text" id="cfg-topic-cmd" value="gate/command">
+            </div>
+            <div class="form-group">
+              <label>Topic Status</label>
+              <input type="text" id="cfg-topic-status" value="gate/status">
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-secondary" id="btn-reset-settings">Mặc định</button>
+          <button class="btn btn-primary" id="btn-save-settings">Lưu & Kết Nối Lại</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Main Content -->
+    <main class="dashboard-grid">
+      <!-- 1. Cột Gateway Hub Overview -->
+      <section class="card gateway-card">
+        <div class="card-header">
+          <div class="card-title-group">
+            <div class="chip chip-accent">GATEWAY HUB</div>
+            <h2>ESP32-S3 Edge Gateway</h2>
+          </div>
+          <div class="gateway-online-pill" id="gw-pill">
+            <span class="pulsing-circle"></span>
+            <span id="gw-online-label">Chờ Gateway...</span>
+          </div>
+        </div>
+
+        <div class="gateway-metrics">
+          <div class="metric-item">
+            <span class="metric-label">Thời gian chạy (Uptime)</span>
+            <span class="metric-value" id="gw-uptime">--:--:--</span>
+          </div>
+          <div class="metric-item">
+            <span class="metric-label">Bộ nhớ khả dụng (Free RAM)</span>
+            <span class="metric-value" id="gw-heap">-- KB</span>
+          </div>
+          <div class="metric-item">
+            <span class="metric-label">Wi-Fi Signal (RSSI)</span>
+            <span class="metric-value" id="gw-rssi">-- dBm</span>
+          </div>
+          <div class="metric-item">
+            <span class="metric-label">Gói tin ESP-NOW</span>
+            <span class="metric-value" id="gw-packets">0</span>
+          </div>
+          <div class="metric-item">
+            <span class="metric-label">Cầu nối Hunonic WS</span>
+            <span class="metric-value text-emerald" id="gw-hunonic-ws">--</span>
+          </div>
+          <div class="metric-item">
+            <span class="metric-label">Phiên bản Firmware</span>
+            <span class="metric-value" id="gw-fw">v1.0.0</span>
+          </div>
+        </div>
+
+        <div class="gateway-actions">
+          <button class="btn btn-danger btn-sm" id="btn-reboot-gate">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M18.36 6.64a9 9 0 1 1-12.73 0M12 2v10"/>
+            </svg>
+            Khởi động lại Gateway
+          </button>
+        </div>
+      </section>
+
+      <!-- 2. Thẻ điều khiển Điều Hòa HUNONIC IR SMART PRO -->
+      <section class="card ac-card">
+        <div class="card-header">
+          <div class="card-title-group">
+            <div class="chip chip-purple">HUNONIC CLOUD BRIDGE</div>
+            <h2 id="ac-name-display">Điều hòa FUNIKI</h2>
+            <span class="device-subtext">Mã thiết bị: <strong id="ac-id-display">3992007</strong> &bull; Hãng: Funiki (104)</span>
+          </div>
+          <button class="power-toggle-btn" id="btn-ac-power" title="Bật / Tắt điều hòa">
+            <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.5">
+              <path d="M18.36 6.64a9 9 0 1 1-12.73 0M12 2v10"/>
+            </svg>
+          </button>
+        </div>
+
+        <div class="ac-dial-wrapper">
+          <div class="temp-control-circle" id="ac-circle">
+            <div class="temp-adjust-btn" id="btn-temp-down" title="Giảm nhiệt độ">-</div>
+            <div class="temp-display">
+              <span class="temp-number" id="ac-temp-val">26</span>
+              <span class="temp-unit">&deg;C</span>
+            </div>
+            <div class="temp-adjust-btn" id="btn-temp-up" title="Tăng nhiệt độ">+</div>
+          </div>
+          <div class="ac-power-state-badge" id="ac-power-label">Đang TẮT</div>
+        </div>
+
+        <!-- Chọn Chế độ (Mode) -->
+        <div class="control-section">
+          <label class="section-label">Chế độ vận hành (Mode)</label>
+          <div class="mode-selector">
+            <button class="mode-btn active" data-mode="1" title="Làm mát">
+              <span class="mode-icon">❄️</span>
+              <span>Cool</span>
+            </button>
+            <button class="mode-btn" data-mode="2" title="Sưởi ấm">
+              <span class="mode-icon">☀️</span>
+              <span>Heat</span>
+            </button>
+            <button class="mode-btn" data-mode="3" title="Hút ẩm">
+              <span class="mode-icon">💧</span>
+              <span>Dry</span>
+            </button>
+            <button class="mode-btn" data-mode="4" title="Quạt gió">
+              <span class="mode-icon">🌀</span>
+              <span>Fan</span>
+            </button>
+            <button class="mode-btn" data-mode="0" title="Tự động">
+              <span class="mode-icon">🔄</span>
+              <span>Auto</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Chọn Tốc độ quạt (Fan) -->
+        <div class="control-section">
+          <label class="section-label">Tốc độ quạt (Fan Speed)</label>
+          <div class="fan-selector">
+            <button class="fan-btn active" data-fan="0">Auto</button>
+            <button class="fan-btn" data-fan="1">Low</button>
+            <button class="fan-btn" data-fan="3">Med</button>
+            <button class="fan-btn" data-fan="5">High</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- 3. Cụm Relay Công Tắc Trực Tiếp Trên Gateway -->
+      <section class="card relays-card">
+        <div class="card-header">
+          <div class="card-title-group">
+            <div class="chip chip-blue">HARDWARE ACTUATORS</div>
+            <h2>Relay Ngoại Vi Gateway</h2>
+            <span class="device-subtext">Điều khiển tải công suất trực tiếp qua GPIO 38 & 39</span>
+          </div>
+        </div>
+
+        <div class="relay-list">
+          <div class="relay-item" id="relay-card-1">
+            <div class="relay-info">
+              <div class="relay-icon">💡</div>
+              <div class="relay-names">
+                <h4>Relay Kênh 1</h4>
+                <span>Đèn chiếu sáng / Tải 1 (GPIO 38)</span>
+              </div>
+            </div>
+            <label class="switch">
+              <input type="checkbox" id="switch-relay-1">
+              <span class="slider"></span>
+            </label>
+          </div>
+
+          <div class="relay-item" id="relay-card-2">
+            <div class="relay-info">
+              <div class="relay-icon">🔌</div>
+              <div class="relay-names">
+                <h4>Relay Kênh 2</h4>
+                <span>Quạt phụ trợ / Tải 2 (GPIO 39)</span>
+              </div>
+            </div>
+            <label class="switch">
+              <input type="checkbox" id="switch-relay-2">
+              <span class="slider"></span>
+            </label>
+          </div>
+        </div>
+      </section>
+
+      <!-- 4. Node Cảm Biến Không Dây (ESP-NOW Sensor Node) -->
+      <section class="card sensor-card">
+        <div class="card-header">
+          <div class="card-title-group">
+            <div class="chip chip-emerald">ESP-NOW SENSOR NODE</div>
+            <h2>Node Cảm Biến Hiện Diện</h2>
+            <span class="device-subtext">Thu thập dữ liệu cảm biến không dây thời gian thực</span>
+          </div>
+          <span class="node-badge" id="node-status-badge">Chờ dữ liệu...</span>
+        </div>
+
+        <div class="sensor-readings-grid">
+          <div class="sensor-box">
+            <div class="sensor-box-icon">🌡️</div>
+            <div class="sensor-box-data">
+              <span class="sensor-val" id="sensor-temp">--.-</span>
+              <span class="sensor-lbl">Nhiệt độ (°C)</span>
+            </div>
+          </div>
+
+          <div class="sensor-box">
+            <div class="sensor-box-icon">💧</div>
+            <div class="sensor-box-data">
+              <span class="sensor-val" id="sensor-hum">--.-</span>
+              <span class="sensor-lbl">Độ ẩm (% RH)</span>
+            </div>
+          </div>
+
+          <div class="sensor-box">
+            <div class="sensor-box-icon">🔋</div>
+            <div class="sensor-box-data">
+              <span class="sensor-val" id="sensor-batt">--.-</span>
+              <span class="sensor-lbl">Điện áp Pin (V)</span>
+            </div>
+          </div>
+
+          <div class="sensor-box">
+            <div class="sensor-box-icon">📡</div>
+            <div class="sensor-box-data">
+              <span class="sensor-val" id="sensor-rssi">--</span>
+              <span class="sensor-lbl">ESP-NOW RSSI (dBm)</span>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <!-- Console Log & Message Stream -->
+    <section class="console-section">
+      <div class="console-header">
+        <div class="console-title">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="4 17 10 11 4 5"></polyline>
+            <line x1="12" y1="19" x2="20" y2="19"></line>
+          </svg>
+          <span>Live MQTT & WebSocket Message Stream</span>
+        </div>
+        <button class="btn btn-ghost btn-sm" id="btn-clear-log">Xóa Log</button>
+      </div>
+      <div class="console-logs" id="console-logs">
+        <div class="log-entry log-system">[HỆ THỐNG] Khởi tạo Dashboard điều khiển Gateway...</div>
+      </div>
+    </section>
+
+    <!-- Notification Toast -->
+    <div class="toast hidden" id="app-toast"></div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
