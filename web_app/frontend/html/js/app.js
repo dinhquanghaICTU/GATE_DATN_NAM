@@ -865,6 +865,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const drawerHeaderTitle = document.getElementById("drawer-header-title");
   const drawerHeaderSub = document.getElementById("drawer-header-sub");
   const drawerHeaderIcon = document.getElementById("drawer-header-icon");
+  const drawerHeroBox = document.getElementById("drawer-hero-box");
   const drawerHeroName = document.getElementById("drawer-hero-name");
   const drawerHeroSub = document.getElementById("drawer-hero-sub");
   const drawerHeroBadge = document.getElementById("drawer-hero-badge");
@@ -1248,7 +1249,8 @@ document.addEventListener("DOMContentLoaded", () => {
   // ── HÀM PHÁT LỆNH ĐIỀU HÒA (DÙNG CHUNG CHO DRAWER, MODAL VÀ DASHBOARD) ────────
   async function sendAcControlCommand(dev, changes = {}, immediate = false) {
     const targetDev = dev || findCurrentAcDevice();
-    const hubDev = customDevices.find(d => d.id === currentDrawerTarget) ||
+    const hubDev = foundHub ||
+                   customDevices.find(d => d.id === currentDrawerTarget) ||
                    customDevices.find(d => d.type === "ir_hub" || (d.id && d.id.includes("hunonic")));
 
     // Kiểm tra Online trước khi gửi
@@ -1283,7 +1285,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // Cập nhật ngược lại vào mảng children của hubDev
     if (hubDev && hubDev.children && targetDev) {
-      const c = hubDev.children.find(x => x.id === targetDev.id);
+      const c = hubDev.children.find(x => String(x.id) === String(targetDev.id));
       if (c) {
         if (changes.state !== undefined || changes.power !== undefined) {
           c.power = (changes.state !== undefined ? changes.state : changes.power);
@@ -1384,11 +1386,25 @@ document.addEventListener("DOMContentLoaded", () => {
     return sendAcControlCommand(dev, changes, isImmediate);
   }
 
+  function resolveDrawerTargetDev() {
+    const hubDev = foundHub || customDevices.find(d => d.type === "ir_hub" || d.id === "dev_ir_hub_hunonic");
+    let targetDev = currentActiveIrChild;
+    if (!targetDev && hubDev && hubDev.children && currentDrawerTarget) {
+      targetDev = hubDev.children.find(c => String(c.id) === String(currentDrawerTarget));
+    }
+    if (!targetDev && currentDrawerTarget) {
+      targetDev = customDevices.find(d => d.id === currentDrawerTarget);
+    }
+    if (!targetDev) {
+      targetDev = (hubDev && hubDev.children && hubDev.children[0]) || hubDev;
+    }
+    return { hubDev, targetDev };
+  }
+
   // Bắt sự kiện click các nút điều khiển AC trong Drawer
   if (drawerBtnPower) {
     drawerBtnPower.addEventListener("click", () => {
-      const hubDev = customDevices.find(d => d.id === currentDrawerTarget);
-      const targetDev = currentActiveIrChild || hubDev;
+      const { hubDev, targetDev } = resolveDrawerTargetDev();
       if (!targetDev) return;
 
       const online = isDeviceOnline(hubDev || targetDev);
@@ -1427,8 +1443,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   if (drawerBtnTempMinus) {
     drawerBtnTempMinus.addEventListener("click", () => {
-      const hubDev = customDevices.find(d => d.id === currentDrawerTarget);
-      const targetDev = currentActiveIrChild || hubDev;
+      const { hubDev, targetDev } = resolveDrawerTargetDev();
       if (!targetDev) return;
       if (!isDeviceOnline(hubDev || targetDev)) {
         triggerOfflineControlWarning(drawerBtnTempMinus);
@@ -1446,8 +1461,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   if (drawerBtnTempPlus) {
     drawerBtnTempPlus.addEventListener("click", () => {
-      const hubDev = customDevices.find(d => d.id === currentDrawerTarget);
-      const targetDev = currentActiveIrChild || hubDev;
+      const { hubDev, targetDev } = resolveDrawerTargetDev();
       if (!targetDev) return;
       if (!isDeviceOnline(hubDev || targetDev)) {
         triggerOfflineControlWarning(drawerBtnTempPlus);
@@ -1465,8 +1479,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   drawerTempPresets.forEach(chip => {
     chip.addEventListener("click", () => {
-      const hubDev = customDevices.find(d => d.id === currentDrawerTarget);
-      const targetDev = currentActiveIrChild || hubDev;
+      const { hubDev, targetDev } = resolveDrawerTargetDev();
       if (!targetDev) return;
       if (!isDeviceOnline(hubDev || targetDev)) {
         triggerOfflineControlWarning(chip);
@@ -1482,8 +1495,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   drawerModePills.forEach(pill => {
     pill.addEventListener("click", () => {
-      const hubDev = customDevices.find(d => d.id === currentDrawerTarget);
-      const targetDev = currentActiveIrChild || hubDev;
+      const { hubDev, targetDev } = resolveDrawerTargetDev();
       if (!targetDev) return;
       if (!isDeviceOnline(hubDev || targetDev)) {
         triggerOfflineControlWarning(pill);
@@ -1496,8 +1508,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   drawerFanPills.forEach(pill => {
     pill.addEventListener("click", () => {
-      const hubDev = customDevices.find(d => d.id === currentDrawerTarget);
-      const targetDev = currentActiveIrChild || hubDev;
+      const { hubDev, targetDev } = resolveDrawerTargetDev();
       if (!targetDev) return;
       if (!isDeviceOnline(hubDev || targetDev)) {
         triggerOfflineControlWarning(pill);
@@ -1532,6 +1543,12 @@ document.addEventListener("DOMContentLoaded", () => {
     if (drawerTeleGrid) drawerTeleGrid.style.display = "grid";
     if (drawerGwChildSection) drawerGwChildSection.style.display = "block";
     if (drawerGwExtraActions) drawerGwExtraActions.style.display = "flex";
+    if (drawerHeroBox) drawerHeroBox.style.display = "flex";
+
+    const editSecGw = document.getElementById("drawer-edit-section");
+    if (editSecGw) editSecGw.style.display = "block";
+    const delSecGw = document.getElementById("drawer-delete-section");
+    if (delSecGw) delSecGw.style.display = "block";
 
     updateDrawerGatewayTelemetry();
     renderDrawerChildList();
@@ -1581,11 +1598,17 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     }
     if (drawerHeroIconInner) drawerHeroIconInner.innerHTML = `<i class="fa-solid ${faIcon}"></i>`;
+    if (drawerHeroBox) drawerHeroBox.style.display = "flex";
 
     // Ẩn telemetry và danh sách child của Gateway khi mở thiết bị con
     if (drawerTeleGrid) drawerTeleGrid.style.display = "none";
     if (drawerGwChildSection) drawerGwChildSection.style.display = "none";
     if (drawerGwExtraActions) drawerGwExtraActions.style.display = "none";
+
+    const editSecChild = document.getElementById("drawer-edit-section");
+    if (editSecChild) editSecChild.style.display = "block";
+    const delSecChild = document.getElementById("drawer-delete-section");
+    if (delSecChild) delSecChild.style.display = "block";
 
     // Xử lý hiển thị theo từng phân loại thiết bị
     if (isIrHub) {
@@ -1654,6 +1677,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (deviceDetailDrawer) deviceDetailDrawer.classList.remove("open");
     if (drawerBackdrop) drawerBackdrop.classList.remove("active");
     currentDrawerTarget = null;
+    currentActiveIrChild = null;
   }
 
   if (btnCloseDrawer) {
@@ -2022,14 +2046,14 @@ document.addEventListener("DOMContentLoaded", () => {
         const subClass = isChildOn ? "on" : "";
 
         html += `
-          <div class="hunonic-card subview-ac-card" data-child-id="${child.id}" data-hub-id="${dev.id}" title="Bấm vào để mở điều khiển điều hòa">
-            <div class="hunonic-card-top">
+          <div class="hunonic-card subview-ac-card" onclick="window.handleAcCardClick('${child.id}')" data-child-id="${child.id}" data-hub-id="${dev.id || 'dev_ir_hub_hunonic'}" title="Bấm vào để mở điều khiển điều hòa">
+            <div class="hunonic-card-top" style="pointer-events: none;">
               <div class="ac-indoor-svg">
                 ${getAcUnitSvg(isHubOnline, isChildOn)}
               </div>
               ${getWifiHunonicSvg(isHubOnline)}
             </div>
-            <div class="hunonic-card-bottom">
+            <div class="hunonic-card-bottom" style="pointer-events: none;">
               <h4 class="hunonic-card-title">${escapeHtml(child.name)}</h4>
               <p class="hunonic-card-sub ${subClass}">${statusText}</p>
             </div>
@@ -2272,6 +2296,68 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
+  // ── MỞ DRAWER ĐIỀU KHIỂN ĐIỀU HÒA TRỰC TIẾP (BÊN TAY PHẢI) ───────────────────
+  function openAcDrawer(childDev, hubDev = foundHub) {
+    if (!childDev) return;
+    currentActiveIrChild = childDev;
+    currentDrawerTarget = childDev.id;
+
+    // Header Drawer
+    if (drawerHeaderTitle) drawerHeaderTitle.innerText = childDev.name;
+    if (drawerHeaderSub) drawerHeaderSub.innerText = `${(hubDev && hubDev.room) || 'Phòng khách'} • Điều hòa IR Hunonic`;
+    if (drawerHeaderIcon) drawerHeaderIcon.innerHTML = `<i class="fa-solid fa-wind"></i>`;
+
+    // Ẩn tất cả section khác của Gateway, chỉ mở AC control panel
+    if (drawerTeleGrid) drawerTeleGrid.style.display = "none";
+    if (drawerGwChildSection) drawerGwChildSection.style.display = "none";
+    if (drawerGwExtraActions) drawerGwExtraActions.style.display = "none";
+    if (drawerIrHubSection) drawerIrHubSection.style.display = "none";
+    if (drawerHeroBox) drawerHeroBox.style.display = "none";
+
+    const editSec = document.getElementById("drawer-edit-section");
+    if (editSec) editSec.style.display = "none";
+    const delSec = document.getElementById("drawer-delete-section");
+    if (delSec) delSec.style.display = "none";
+
+    // Bật Panel Điều Hòa
+    if (drawerAcPanel) drawerAcPanel.style.display = "flex";
+    if (drawerAcBackBar) drawerAcBackBar.style.display = "none";
+
+    // Cập nhật giao diện điều khiển (nhiệt độ, công suất, quạt, chế độ)
+    updateDrawerAcUI(childDev);
+
+    // Mở Drawer trượt từ bên phải
+    const drawerEl = document.getElementById("device-detail-drawer") || deviceDetailDrawer;
+    const backdropEl = document.getElementById("drawer-backdrop") || drawerBackdrop;
+    if (drawerEl) {
+      drawerEl.classList.add("open");
+    }
+    if (backdropEl) {
+      backdropEl.classList.add("active");
+    }
+  }
+  window.openAcDrawer = openAcDrawer;
+
+  // ── HÀM TOÀN CỤC BẮT SỰ KIỆN CLICK CARD ĐIỀU HÒA (ĐẢM BẢO 100% MỞ DRAWER) ─────
+  window.handleAcCardClick = function(childId) {
+    const hubDev = foundHub || customDevices.find(d => d.type === "ir_hub" || d.id === "dev_ir_hub_hunonic");
+    let child = null;
+    if (hubDev && hubDev.children) {
+      child = hubDev.children.find(c => String(c.id) === String(childId));
+    }
+    if (!child) {
+      if (String(childId) === "4003248") {
+        child = { id: "4003248", name: "Điều hòa MIRAGE", type: "ac", temp: 25, mode: 1, fan: 0, power: 0, brand: 117 };
+      } else if (String(childId) === "4003318") {
+        child = { id: "4003318", name: "Điều hòa FUNIKI", type: "ac", temp: 26, mode: 1, fan: 0, power: 0, brand: 104 };
+      }
+    }
+    if (!child) {
+      child = { id: String(childId), name: "Điều hòa", type: "ac", temp: 25, mode: 1, fan: 0, power: 0, brand: 104 };
+    }
+    openAcDrawer(child, hubDev);
+  };
+
   // ── XỬ LÝ EVENT DELEGATION TRÊN SUB-VIEW DEVICES GRID ───────────────────────
   const subviewDevicesGridEl = document.getElementById("subview-devices-grid");
   if (subviewDevicesGridEl) {
@@ -2280,15 +2366,7 @@ document.addEventListener("DOMContentLoaded", () => {
       const acCard = e.target.closest(".subview-ac-card");
       if (acCard) {
         const childId = acCard.getAttribute("data-child-id");
-        const hubId = acCard.getAttribute("data-hub-id") || (foundHub ? foundHub.id : "dev_ir_hub_hunonic");
-        const hubDev = customDevices.find(d => d.id === hubId) || foundHub;
-        if (hubDev && hubDev.children) {
-          const child = hubDev.children.find(c => c.id === childId);
-          if (child) {
-            openChildDeviceDrawer(hubDev.id);
-            openAcControlView(child, hubDev);
-          }
-        }
+        window.handleAcCardClick(childId);
         return;
       }
 
@@ -3061,6 +3139,25 @@ document.addEventListener("DOMContentLoaded", () => {
         });
       }
 
+      if (d.ac_devices && typeof d.ac_devices === "object") {
+        const hubDev = foundHub || customDevices.find(cd => cd.type === "ir_hub" || cd.id === "dev_ir_hub_hunonic");
+        if (hubDev && hubDev.children) {
+          hubDev.children.forEach(ch => {
+            const remoteAc = d.ac_devices[ch.id];
+            if (remoteAc) {
+              if (remoteAc.name) ch.name = remoteAc.name;
+              if (remoteAc.power !== undefined) ch.power = remoteAc.power;
+              ch.state = ch.power;
+              if (remoteAc.temp > 0) ch.temp = remoteAc.temp;
+              if (remoteAc.mode !== undefined) ch.mode = remoteAc.mode;
+              if (remoteAc.fan !== undefined) ch.fan = remoteAc.fan;
+              if (remoteAc.brand) ch.brand = remoteAc.brand;
+              if (remoteAc.online !== undefined) ch.online = Boolean(remoteAc.online);
+            }
+          });
+        }
+      }
+
       if (d.ac_power !== undefined) acState.power = d.ac_power;
       if (d.ac_temp > 0) acState.temp = d.ac_temp;
 
@@ -3070,17 +3167,15 @@ document.addEventListener("DOMContentLoaded", () => {
       renderDrawerChildList();
 
       // Cập nhật tức thời Drawer Điều Hòa hoặc Trạm IR nếu đang mở
-      if (currentDrawerTarget) {
+      if (currentActiveIrChild) {
+        updateDrawerAcUI(currentActiveIrChild);
+      } else if (currentDrawerTarget) {
         const curDev = customDevices.find(cd => cd.id === currentDrawerTarget);
         if (curDev) {
           if (curDev.type === "ac") {
             updateDrawerAcUI(curDev);
           } else if (curDev.type === "ir_hub") {
-            if (currentActiveIrChild) {
-              updateDrawerAcUI(currentActiveIrChild);
-            } else {
-              renderIrChildList(curDev);
-            }
+            renderIrChildList(curDev);
           }
         }
       }
