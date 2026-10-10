@@ -1,0 +1,575 @@
+/* ==============================================================================
+   LOGIN PAGE STYLING: EMERALD ORGANIC WAVE DESIGN (BLUEFLAME THEME)
+   Designed for Gateway & HVAC Management Center
+   ============================================================================== */
+
+:root {
+  --green-primary: #157347;
+  --green-dark: #0d5431;
+  --green-vibrant: #0ea85e;
+  --green-vibrant-hover: #0c9151;
+  --green-mint-input: #c6e9d8;
+  --green-mint-focus: #b5e2cb;
+  --green-text-dark: #11442b;
+  --green-placeholder: #578c74;
+  --neutral-gray-bg: #5a6270;
+  --text-muted: #64748b;
+  --text-dark: #1e293b;
+  --white: #ffffff;
+  --font-heading: 'Outfit', sans-serif;
+  --font-body: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: var(--font-body);
+  background: var(--neutral-gray-bg);
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px 16px;
+  color: var(--text-dark);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ── Viewport Container ─────────────────────────────────────────────────── */
+.login-viewport {
+  width: 100%;
+  max-width: 960px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ── Main Dual-Panel Card ───────────────────────────────────────────────── */
+.auth-card {
+  width: 100%;
+  min-height: 520px;
+  background: var(--white);
+  border-radius: 36px;
+  box-shadow: 0 25px 60px rgba(0, 0, 0, 0.35);
+  display: flex;
+  position: relative;
+  overflow: hidden;
+  animation: cardScaleIn 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes cardScaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.96) translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+/* ==========================================================================
+   LEFT PANEL: Emerald Green with Organic Curves
+   ========================================================================== */
+.panel-welcome {
+  flex: 1.1;
+  background: linear-gradient(150deg, #157a49 0%, #11683d 50%, #0c4d2d 100%);
+  position: relative;
+  overflow: hidden;
+  padding: 48px 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--white);
+  z-index: 1;
+}
+
+/* Organic Curved Shapes on the Left */
+.green-blob-curve {
+  position: absolute;
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.blob-top {
+  width: 420px;
+  height: 420px;
+  background: radial-gradient(circle, rgba(34, 197, 94, 0.35) 0%, rgba(21, 122, 73, 0) 70%);
+  top: -120px;
+  left: -80px;
+}
+
+.blob-bottom {
+  width: 380px;
+  height: 380px;
+  background: radial-gradient(circle, #093b21 0%, rgba(9, 59, 33, 0) 75%);
+  bottom: -100px;
+  left: -60px;
+}
+
+/* The Distinctive Convex Curve Bulging into the Right Side */
+.green-divider-bulge {
+  position: absolute;
+  top: -10%;
+  right: -90px;
+  width: 220px;
+  height: 120%;
+  background: inherit;
+  border-radius: 50%;
+  z-index: 1;
+}
+
+/* Welcome Inner Content */
+.welcome-content {
+  position: relative;
+  z-index: 5;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  max-width: 340px;
+}
+
+/* Circular Logo Badge */
+.brand-badge-circle {
+  width: 64px;
+  height: 64px;
+  background: var(--white);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+  margin-bottom: 12px;
+  transition: transform 0.3s ease;
+}
+
+.brand-badge-circle:hover {
+  transform: scale(1.06) rotate(5deg);
+}
+
+.brand-icon-flame {
+  width: 32px;
+  height: 32px;
+  color: var(--green-primary);
+}
+
+.brand-title {
+  font-family: var(--font-heading);
+  font-size: 1.25rem;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  color: var(--white);
+}
+
+.brand-sub {
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  color: rgba(255, 255, 255, 0.75);
+  margin-bottom: 28px;
+}
+
+.welcome-heading {
+  font-family: var(--font-heading);
+  font-size: 2.15rem;
+  font-weight: 700;
+  letter-spacing: -0.5px;
+  margin-bottom: 12px;
+  line-height: 1.2;
+}
+
+.welcome-description {
+  font-size: 0.88rem;
+  color: rgba(255, 255, 255, 0.88);
+  line-height: 1.55;
+  margin-bottom: 32px;
+  padding: 0 10px;
+}
+
+/* Pill Outline Button on Left Panel */
+.btn-sign-in-pill {
+  display: inline-block;
+  padding: 10px 36px;
+  border: 1.5px solid rgba(255, 255, 255, 0.85);
+  border-radius: 9999px;
+  color: var(--white);
+  font-family: var(--font-heading);
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.8px;
+  text-decoration: none;
+  background: transparent;
+  transition: all 0.25s ease;
+  margin-bottom: 36px;
+}
+
+.btn-sign-in-pill:hover {
+  background: rgba(255, 255, 255, 0.18);
+  border-color: var(--white);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.15);
+}
+
+/* Footer Meta Text */
+.welcome-meta-footer {
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.8px;
+  color: rgba(255, 255, 255, 0.6);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.meta-dot {
+  font-size: 0.8rem;
+  opacity: 0.5;
+}
+
+/* ==========================================================================
+   RIGHT PANEL: Pure White Form with Top-Right Green Corner Accent
+   ========================================================================== */
+.panel-form {
+  flex: 1.25;
+  background: var(--white);
+  position: relative;
+  padding: 48px 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  z-index: 2;
+}
+
+/* Top-Right Decorative Green Wave Accent */
+.top-right-green-accent {
+  position: absolute;
+  top: -85px;
+  right: -85px;
+  width: 200px;
+  height: 200px;
+  background: linear-gradient(135deg, #157a49 0%, #0d5431 100%);
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.form-content-wrap {
+  width: 100%;
+  max-width: 360px;
+  position: relative;
+  z-index: 5;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+/* Form Titles */
+.form-header {
+  margin-bottom: 30px;
+  width: 100%;
+}
+
+.form-main-title {
+  font-family: var(--font-heading);
+  font-size: 2.4rem;
+  font-weight: 800;
+  color: var(--green-primary);
+  letter-spacing: -0.5px;
+  margin-bottom: 6px;
+  text-transform: lowercase;
+}
+
+.form-sub-title {
+  font-size: 0.86rem;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+/* ── Form Controls & Pill Inputs ────────────────────────────────────────── */
+.auth-form {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+}
+
+.input-pill-wrapper {
+  width: 100%;
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.pill-input {
+  width: 100%;
+  height: 48px;
+  background: var(--green-mint-input);
+  border: none;
+  border-radius: 9999px;
+  padding: 0 26px;
+  font-family: var(--font-body);
+  font-size: 0.92rem;
+  font-weight: 500;
+  color: var(--green-text-dark);
+  outline: none;
+  transition: all 0.25s ease;
+}
+
+.pill-input::placeholder {
+  color: var(--green-placeholder);
+  font-size: 0.88rem;
+  letter-spacing: 0.3px;
+}
+
+.pill-input:focus {
+  background: var(--green-mint-focus);
+  box-shadow: 0 0 0 3px rgba(21, 122, 73, 0.25);
+}
+
+/* Eye Toggle Icon on Password Field */
+.password-field .pill-input {
+  padding-right: 48px;
+}
+
+.btn-eye-toggle {
+  position: absolute;
+  right: 18px;
+  background: none;
+  border: none;
+  color: var(--green-placeholder);
+  cursor: pointer;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.2s;
+}
+
+.btn-eye-toggle:hover {
+  color: var(--green-text-dark);
+}
+
+.btn-eye-toggle svg {
+  width: 18px;
+  height: 18px;
+}
+
+/* Forgot Password Row */
+.form-meta-row {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  margin-top: -4px;
+  margin-bottom: 8px;
+}
+
+.link-forgot-pwd {
+  font-size: 0.78rem;
+  color: #64748b;
+  text-decoration: none;
+  font-weight: 500;
+  transition: color 0.2s;
+}
+
+.link-forgot-pwd:hover {
+  color: var(--green-primary);
+  text-decoration: underline;
+}
+
+/* ── Centered Pill Submit Button ────────────────────────────────────────── */
+.submit-btn-row {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+}
+
+.btn-log-in-pill {
+  padding: 12px 48px;
+  background: var(--green-vibrant);
+  border: none;
+  border-radius: 9999px;
+  color: var(--white);
+  font-family: var(--font-heading);
+  font-size: 0.95rem;
+  font-weight: 700;
+  letter-spacing: 0.8px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  box-shadow: 0 6px 20px rgba(14, 168, 94, 0.38);
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  min-width: 160px;
+}
+
+.btn-log-in-pill:hover {
+  background: var(--green-vibrant-hover);
+  transform: translateY(-2px);
+  box-shadow: 0 10px 24px rgba(14, 168, 94, 0.48);
+}
+
+.btn-log-in-pill:active {
+  transform: translateY(0);
+}
+
+.btn-log-in-pill:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* Loading Spinner */
+.spinner-ring {
+  width: 18px;
+  height: 18px;
+  border: 2.5px solid rgba(255, 255, 255, 0.35);
+  border-top-color: var(--white);
+  border-radius: 50%;
+  animation: spinRing 0.75s linear infinite;
+}
+
+@keyframes spinRing {
+  to { transform: rotate(360deg); }
+}
+
+.hidden {
+  display: none !important;
+}
+
+/* ── Footer: Sign up hint ───────────────────────────────────────────────── */
+.form-footer-action {
+  margin-top: 14px;
+}
+
+.footer-signup-text {
+  font-size: 0.82rem;
+  color: #475569;
+  font-weight: 500;
+}
+
+.link-sign-up {
+  color: var(--green-primary);
+  font-weight: 700;
+  text-decoration: none;
+  transition: color 0.2s;
+}
+
+.link-sign-up:hover {
+  color: var(--green-vibrant);
+  text-decoration: underline;
+}
+
+/* ==========================================================================
+   RESPONSIVE DESIGN (Matching the Mobile Mockups)
+   ========================================================================== */
+@media (max-width: 820px) {
+  .auth-card {
+    flex-direction: column;
+    max-width: 440px;
+    border-radius: 30px;
+  }
+
+  .panel-welcome {
+    padding: 38px 24px 44px;
+    border-radius: 30px 30px 0 0;
+  }
+
+  .green-divider-bulge {
+    top: auto;
+    bottom: -60px;
+    right: auto;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 140%;
+    height: 100px;
+    border-radius: 50%;
+  }
+
+  .welcome-heading {
+    font-size: 1.8rem;
+  }
+
+  .welcome-description {
+    font-size: 0.82rem;
+    margin-bottom: 22px;
+  }
+
+  .btn-sign-in-pill {
+    margin-bottom: 20px;
+    padding: 8px 28px;
+  }
+
+  .panel-form {
+    padding: 40px 24px 36px;
+    border-radius: 0 0 30px 30px;
+  }
+
+  .top-right-green-accent {
+    width: 120px;
+    height: 120px;
+    top: -50px;
+    right: -50px;
+  }
+
+  .form-main-title {
+    font-size: 2rem;
+  }
+}
+
+/* ==========================================================================
+   TOAST NOTIFICATION COMPONENT
+   ========================================================================== */
+.toast-container {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.toast {
+  min-width: 280px;
+  max-width: 380px;
+  padding: 12px 18px;
+  background: rgba(17, 24, 39, 0.95);
+  border-radius: 14px;
+  border-left: 4px solid var(--green-vibrant);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(12px);
+  color: #f8fafc;
+  font-size: 0.85rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  animation: toastSlideIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.toast.error {
+  border-left-color: #ef4444;
+}
+
+.toast.success {
+  border-left-color: var(--green-vibrant);
+}
+
+@keyframes toastSlideIn {
+  from {
+    opacity: 0;
+    transform: translateX(40px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}

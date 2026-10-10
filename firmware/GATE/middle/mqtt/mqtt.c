@@ -69,9 +69,37 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base,
   }
 }
 
+typedef struct {
+  char topic[64];
+  char payload[512];
+  int qos;
+  int retain;
+} mqtt_queue_item_t;
+
+static QueueHandle_t s_mqtt_tx_queue = NULL;
+
+static void mqtt_tx_task(void *pvParam) {
+  ESP_LOGI(TAG, "MQTT TX Queue Worker da khoi dong!");
+  mqtt_queue_item_t item;
+  while (1) {
+    if (xQueueReceive(s_mqtt_tx_queue, &item, portMAX_DELAY) == pdTRUE) {
+      if (s_mqtt_client && s_mqtt_state == MQTT_STATE_CONNECTED) {
+        esp_mqtt_client_publish(s_mqtt_client, item.topic, item.payload, 0, item.qos, item.retain);
+        // Pacing delay (40ms) giua cac ban tin tranh nghen TCP/TLS socket va giu broker ping on dinh
+        vTaskDelay(pdMS_TO_TICKS(40));
+      }
+    }
+  }
+}
+
 esp_err_t app_mqtt_init(const app_mqtt_config_t *config) {
   if (s_mqtt_event_group == NULL) {
     s_mqtt_event_group = xEventGroupCreate();
+  }
+
+  if (s_mqtt_tx_queue == NULL) {
+    s_mqtt_tx_queue = xQueueCreate(24, sizeof(mqtt_queue_item_t));
+    xTaskCreate(mqtt_tx_task, "mqtt_tx_task", 4096, NULL, 3, NULL);
   }
 
   esp_mqtt_client_config_t mqtt_cfg = {
@@ -87,6 +115,15 @@ esp_err_t app_mqtt_init(const app_mqtt_config_t *config) {
       .network = {
           .reconnect_timeout_ms = 5000,
           .timeout_ms = 10000,
+      },
+      .session = {
+          .last_will = {
+              .topic = TOPIC_GATE_STATUS,
+              .msg = "{\"event\":\"lwt_offline\",\"device\":\"esp32s3_gate\",\"online\":false}",
+              .qos = 1,
+              .retain = 0,
+          },
+          .keepalive = 60,
       },
   };
 
@@ -114,10 +151,24 @@ esp_err_t app_mqtt_stop(void) {
 }
 
 int app_mqtt_publish(const char *topic, const char *data, int qos, int retain) {
-  if (!s_mqtt_client || s_mqtt_state != MQTT_STATE_CONNECTED) {
+  if (!s_mqtt_tx_queue || !topic || !data) {
     return -1;
   }
-  return esp_mqtt_client_publish(s_mqtt_client, topic, data, 0, qos, retain);
+  mqtt_queue_item_t item;
+  strncpy(item.topic, topic, sizeof(item.topic) - 1);
+  item.topic[sizeof(item.topic) - 1] = '\0';
+
+  strncpy(item.payload, data, sizeof(item.payload) - 1);
+  item.payload[sizeof(item.payload) - 1] = '\0';
+
+  item.qos = qos;
+  item.retain = retain;
+
+  if (xQueueSend(s_mqtt_tx_queue, &item, pdMS_TO_TICKS(10)) != pdTRUE) {
+    ESP_LOGW(TAG, "MQTT TX Queue day, bo qua ban tin");
+    return -1;
+  }
+  return 0;
 }
 
 int app_mqtt_subscribe(const char *topic, int qos) {

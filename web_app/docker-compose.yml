@@ -1,0 +1,67 @@
+services:
+  # 1. CƠ SỞ DỮ LIỆU POSTGRESQL (CỔNG HOST 5433 - KHÔNG TRÙNG PUMP 5432)
+  gate_postgres:
+    image: postgres:15-alpine
+    container_name: gate_datn_postgres
+    restart: always
+    environment:
+      POSTGRES_USER: gate_admin
+      POSTGRES_PASSWORD: GatePass2026
+      POSTGRES_DB: gate_datn_db
+    ports:
+      - "5433:5432"
+    volumes:
+      - gate_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U gate_admin -d gate_datn_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - gate_net
+
+  # 2. FASTAPI BACKEND API + HIVEMQ CLIENT (CỔNG HOST 8001 - KHÔNG TRÙNG PUMP 8000)
+  backend_api:
+    build: ./backend
+    container_name: gate_datn_backend
+    restart: always
+    ports:
+      - "8001:8001"
+    environment:
+      PORT: 8001
+      DATABASE_URL: "postgresql+psycopg2://gate_admin:GatePass2026@gate_postgres:5432/gate_datn_db"
+      JWT_SECRET: "gate_datn_super_secret_jwt_key_ictu_2026"
+      MQTT_BROKER_URI: "mqtts://20476a36ce36478d90de6d5676587638.s1.eu.hivemq.cloud:8883"
+      MQTT_USERNAME: "quanghaictu"
+      MQTT_PASSWORD: "Zdinhquangha1234"
+      DEFAULT_ADMIN_USER: "admin"
+      DEFAULT_ADMIN_PASS: "admin123"
+    depends_on:
+      gate_postgres:
+        condition: service_healthy
+    networks:
+      - gate_net
+
+  # 3. GIAO DIỆN WEB DASHBOARD & REVERSE PROXY NGINX (CỔNG HOST 8080 - KHÔNG TRÙNG PUMP 80)
+  frontend:
+    build: ./frontend
+    container_name: gate_datn_frontend
+    restart: always
+    ports:
+      - "8080:8080"
+      - "8443:8443"
+    volumes:
+      - ./frontend/html:/usr/share/nginx/html
+      - ./frontend/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./frontend/ssl:/etc/nginx/ssl:ro
+    depends_on:
+      - backend_api
+    networks:
+      - gate_net
+
+volumes:
+  gate_postgres_data:
+
+networks:
+  gate_net:
+    driver: bridge

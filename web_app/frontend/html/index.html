@@ -1,0 +1,1103 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SMART GATEWAY • Hệ Thống Nhà Thông Minh & Điều Khiển HVAC</title>
+  
+  <!-- Google Fonts: Outfit & Plus Jakarta Sans -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  
+  <link rel="stylesheet" href="css/style.css?v=55">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+</head>
+<body>
+
+  <div class="hunonic-layout">
+    
+    <!-- ==================================================================== -->
+    <!-- 1. LEFT SIDEBAR (THANH ĐIỀU HƯỚNG TRÁI)                             -->
+    <!-- ==================================================================== -->
+    <div class="sidebar-backdrop" id="sidebar-backdrop"></div>
+    <aside class="hunonic-sidebar" id="hunonic-sidebar">
+      
+      <!-- Brand Logo (Custom Gateway IoT Logo) -->
+      <div class="sidebar-brand">
+        <div class="brand-logo-badge">
+          <svg viewBox="0 0 44 44" class="logo-svg-custom">
+            <defs>
+              <linearGradient id="brandLogoGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stop-color="#00d284" />
+                <stop offset="100%" stop-color="#008753" />
+              </linearGradient>
+            </defs>
+            <rect width="44" height="44" rx="12" fill="url(#brandLogoGrad)"/>
+            <path d="M22 8L34 15V29L22 36L10 29V15L22 8Z" stroke="#ffffff" stroke-width="2.2" fill="none" stroke-linejoin="round"/>
+            <circle cx="22" cy="22" r="4.5" fill="#ffffff"/>
+            <path d="M22 13V17.5M22 26.5V31M14 17L18.5 19.5M25.5 24.5L30 27M14 27L18.5 24.5M25.5 19.5L30 17" stroke="#ffffff" stroke-width="1.8" stroke-linecap="round"/>
+          </svg>
+        </div>
+        <div class="brand-text-col">
+          <span class="brand-name-main">GATEWAY</span>
+          <div class="brand-sub-badge-row">
+            <span class="brand-sub-label">SMART HVAC</span>
+            <span class="brand-version-tag">PRO</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Menu Items -->
+      <nav class="sidebar-nav">
+        <a href="index.html" class="nav-item active" id="nav-home">
+          <i class="fa-regular fa-clock nav-icon"></i>
+          <span>Trang chủ</span>
+        </a>
+        <a href="javascript:void(0)" class="nav-item" id="nav-rooms">
+          <i class="fa-solid fa-shapes nav-icon"></i>
+          <span>Quản lý phòng</span>
+        </a>
+        <a href="javascript:void(0)" class="nav-item" id="nav-home-mgmt">
+          <i class="fa-solid fa-house-chimney nav-icon"></i>
+          <span>Quản lý nhà</span>
+        </a>
+        <a href="javascript:void(0)" class="nav-item" id="nav-notifs">
+          <i class="fa-regular fa-bell nav-icon"></i>
+          <span>Thông báo</span>
+        </a>
+
+        <div class="nav-divider"></div>
+
+        <a href="/docs" target="_blank" class="nav-item nav-docs">
+          <i class="fa-solid fa-book-open nav-icon"></i>
+          <span>Tài liệu API</span>
+        </a>
+
+        <a href="javascript:void(0)" class="nav-item nav-logout" id="btn-logout">
+          <i class="fa-solid fa-arrow-right-from-bracket nav-icon"></i>
+          <span>Đăng xuất</span>
+        </a>
+      </nav>
+
+      <!-- Sidebar Footer Meta -->
+      <div class="sidebar-footer">
+        <span class="gate-status-dot online" id="sidebar-gate-dot"></span>
+        <span class="gate-status-text" id="sidebar-gate-text">Gateway Online</span>
+      </div>
+    </aside>
+
+    <!-- ==================================================================== -->
+    <!-- 2. MAIN APP CONTENT AREA (NỀN SOFA PHÒNG KHÁCH)                     -->
+    <!-- ==================================================================== -->
+    <div class="hunonic-main-area">
+      
+      <!-- Top Navigation Bar -->
+      <header class="hunonic-topbar">
+        <div class="topbar-left">
+          <!-- Toggle sidebar on mobile -->
+          <button class="topbar-btn" id="btn-toggle-sidebar" title="Menu">
+            <i class="fa-solid fa-bars"></i>
+          </button>
+          <button class="topbar-btn" title="Chế độ lưới">
+            <i class="fa-solid fa-grip"></i>
+          </button>
+          
+          <!-- Home Selector Dropdown -->
+          <div class="home-dropdown-wrap">
+            <div class="home-dropdown-current" id="home-dropdown-trigger">
+              <span id="current-home-name">Căn Hộ Thông Minh (Phòng Khách)</span>
+              <i class="fa-solid fa-chevron-down arrow-icon"></i>
+            </div>
+            <div class="home-dropdown-menu hidden" id="home-dropdown-menu">
+              <div class="home-dropdown-item active" data-home="Căn Hộ Thông Minh (Phòng Khách)">Căn Hộ Thông Minh (Phòng Khách)</div>
+              <div class="home-dropdown-item" data-home="Trạm Gateway ESP32-S3 (ICTU)">Trạm Gateway ESP32-S3 (ICTU)</div>
+              <div class="home-dropdown-item" data-home="Phòng Nghiên Cứu IoT (Lab 302)">Phòng Nghiên Cứu IoT (Lab 302)</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="topbar-right">
+          <!-- MQTT Status Badge -->
+          <div class="mqtt-pill-badge" id="mqtt-status-badge">
+            <span class="pulse-dot"></span>
+            <span id="mqtt-status-text">Đang kết nối Cloud...</span>
+          </div>
+
+          <!-- Settings Button -->
+          <button class="topbar-btn" id="btn-settings" title="Cài đặt hệ thống">
+            <i class="fa-solid fa-gear"></i>
+          </button>
+
+          <!-- User Profile Avatar with Green Ring -->
+          <div class="user-avatar-ring" id="user-display" title="Người dùng hiện tại">
+            <div class="user-avatar-inner">
+              <i class="fa-solid fa-user-astronaut"></i>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <!-- Main Scrollable Dashboard Content -->
+      <main class="hunonic-content">
+        <div id="view-home-dashboard">
+        <!-- ================================================================ -->
+        <!-- TOP WIDGETS ROW: Weather, Power, Device Status Counters          -->
+        <!-- ================================================================ -->
+        <section class="top-widgets-row">
+          
+          <!-- 1. Weather Card (Purple-Blue Gradient) -->
+          <div class="widget-card weather-card">
+            <div class="weather-left">
+              <div class="weather-location-line">
+                <span class="weather-city">Thành phố Thái Nguyên</span>
+                <span class="weather-date" id="live-weather-date">Thứ 7, 10/10/2026</span>
+              </div>
+              <div class="weather-temp-line">
+                <div class="weather-sun-cloud-icon">
+                  <i class="fa-solid fa-cloud-sun"></i>
+                </div>
+                <div class="weather-degrees" id="weather-temp-display">27<span class="deg-unit">°C</span></div>
+              </div>
+            </div>
+
+            <div class="weather-right">
+              <div class="weather-wind-hum">
+                <span>Gió 5.0 km/h</span>
+                <span class="sep">&bull;</span>
+                <span id="weather-hum-display">Độ ẩm 72%</span>
+              </div>
+              <!-- 7-Day Forecast Mini Strip -->
+              <div class="weather-forecast-strip">
+                <div class="forecast-day">
+                  <span class="f-name">Thứ 7</span>
+                  <i class="fa-solid fa-sun f-icon sun"></i>
+                  <span class="f-temp">29°C</span>
+                </div>
+                <div class="forecast-day">
+                  <span class="f-name">CN</span>
+                  <i class="fa-solid fa-sun-cloud f-icon sun"></i>
+                  <span class="f-temp">31°C</span>
+                </div>
+                <div class="forecast-day">
+                  <span class="f-name">Thứ 2</span>
+                  <i class="fa-solid fa-cloud f-icon"></i>
+                  <span class="f-temp">31°C</span>
+                </div>
+                <div class="forecast-day">
+                  <span class="f-name">Thứ 3</span>
+                  <i class="fa-solid fa-cloud-rain f-icon rain"></i>
+                  <span class="f-temp">30°C</span>
+                </div>
+                <div class="forecast-day">
+                  <span class="f-name">Thứ 4</span>
+                  <i class="fa-solid fa-cloud-sun f-icon sun"></i>
+                  <span class="f-temp">31°C</span>
+                </div>
+                <div class="forecast-day">
+                  <span class="f-name">Thứ 5</span>
+                  <i class="fa-solid fa-sun f-icon sun"></i>
+                  <span class="f-temp">31°C</span>
+                </div>
+                <div class="forecast-day">
+                  <span class="f-name">Thứ 6</span>
+                  <i class="fa-solid fa-cloud-rain f-icon rain"></i>
+                  <span class="f-temp">30°C</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 2. Power / Energy Card (Emerald Green Gradient) -->
+          <div class="widget-card power-card">
+            <div class="power-card-header">
+              <span>Điện tiêu thụ tháng 10/2026 &bull; Chưa có thiết bị đo điện</span>
+            </div>
+            <div class="power-card-value">
+              <span class="power-num">0.00</span>
+              <span class="power-unit">kWh</span>
+            </div>
+            <div class="power-card-footer">
+              <span>Tháng trước: 0.00 kWh</span>
+              <span class="power-diff-badge">
+                <i class="fa-solid fa-arrow-trend-down"></i> Giảm 0% (0 kWh)
+              </span>
+            </div>
+          </div>
+
+          <!-- 3. Device Status Counters (White Card with 3 status tiles) -->
+          <div class="widget-card status-counters-card">
+            
+            <!-- Tile 1: Đang Bật (Vibrant Green) -->
+            <div class="status-tile tile-on">
+              <div class="tile-number" id="count-devices-on">00</div>
+              <div class="tile-label">Thiết bị đang bật</div>
+            </div>
+
+            <!-- Tile 2: Đang Tắt (Mint/Cyan) -->
+            <div class="status-tile tile-off">
+              <div class="tile-number" id="count-devices-off">00</div>
+              <div class="tile-label">Thiết bị đang tắt</div>
+            </div>
+
+            <!-- Tile 3: Mất Kết Nối (Gray) -->
+            <div class="status-tile tile-offline">
+              <div class="tile-number" id="count-devices-offline">00</div>
+              <div class="tile-label">Thiết bị mất kết nối</div>
+            </div>
+
+          </div>
+
+        </section>
+
+        <!-- ================================================================ -->
+        <!-- SECTION 2: Ngữ Cảnh Hay Dùng (Favorite Scenes)                   -->
+        <!-- ================================================================ -->
+        <section class="section-block">
+          <div class="section-header">
+            <h3 class="section-title">Ngữ cảnh hay dùng</h3>
+            <button class="btn-section-add" id="btn-add-scene">
+              <i class="fa-solid fa-plus"></i> Thêm
+            </button>
+          </div>
+
+          <div class="scenes-chips-row">
+            <div class="scene-chip" id="scene-home">
+              <i class="fa-solid fa-house-user chip-icon"></i>
+              <span>Về nhà (25°C Cool)</span>
+            </div>
+            <div class="scene-chip" id="scene-sleep">
+              <i class="fa-solid fa-moon chip-icon"></i>
+              <span>Đi ngủ (27°C)</span>
+            </div>
+            <div class="scene-chip" id="scene-cool-fast">
+              <i class="fa-solid fa-snowflake chip-icon"></i>
+              <span>Làm mát nhanh (22°C)</span>
+            </div>
+            <div class="scene-chip" id="scene-power-save">
+              <i class="fa-solid fa-leaf chip-icon"></i>
+              <span>Tiết kiệm điện (Tắt hết)</span>
+            </div>
+          </div>
+        </section>
+
+        <!-- ================================================================ -->
+        <!-- SECTION 3: Thiết Bị Hay Dùng (Favorite Devices - Hunonic Cards)   -->
+        <!-- ================================================================ -->
+        <section class="section-block">
+          <div class="section-header">
+            <h3 class="section-title">Thiết bị hay dùng</h3>
+            <button class="btn-section-add" id="btn-add-device">
+              <i class="fa-solid fa-plus"></i> Thêm
+            </button>
+          </div>
+
+          <div class="devices-grid" id="devices-grid">
+            <!-- Được render động bởi app.js tùy theo trạng thái thiết bị -->
+          </div>
+        </section>
+        </div> <!-- /view-home-dashboard -->
+
+        <!-- ================================================================ -->
+        <!-- VIEW SUB-HUB: CHI TIẾT CÁC THIẾT BỊ TRONG TRẠM (GIỐNG HUNONIC)   -->
+        <!-- ================================================================ -->
+        <div id="view-device-hub" class="hunonic-subview" style="display: none;">
+          <div class="subview-header-bar">
+            <div class="subview-header-left">
+              <button type="button" class="btn-subview-back" id="btn-subview-back" title="Quay lại Trang chủ">
+                <i class="fa-solid fa-arrow-left"></i>
+              </button>
+              <div class="subview-title-group">
+                <span id="subview-header-icon-box"><i class="fa-solid fa-wifi text-green"></i></span>
+                <h3 class="subview-title" id="subview-title">IR trung tâm</h3>
+              </div>
+            </div>
+            <div class="subview-header-right">
+              <button type="button" class="btn-subview-action" id="btn-subview-action">
+                <i class="fa-solid fa-plus"></i> <span id="subview-action-text">Tạo Custom AC</span>
+              </button>
+              <button type="button" class="btn-subview-gear" id="btn-subview-gear" title="Cài đặt trạm">
+                <i class="fa-solid fa-gear"></i>
+              </button>
+            </div>
+          </div>
+
+          <div class="subview-devices-grid" id="subview-devices-grid">
+            <!-- Render động danh sách các thẻ điều hòa / thiết bị con phong cách Hunonic -->
+          </div>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <!-- ==================================================================== -->
+  <!-- DRAWER: NAV BÊN TAY PHẢI - QUẢN LÝ, CHỈNH SỬA & XÓA THIẾT BỊ         -->
+  <!-- ==================================================================== -->
+  <div class="drawer-backdrop" id="drawer-backdrop"></div>
+
+  <aside class="device-detail-drawer" id="device-detail-drawer">
+    <div class="drawer-header">
+      <div class="drawer-header-left">
+        <div class="drawer-header-icon" id="drawer-header-icon">
+          <i class="fa-solid fa-server"></i>
+        </div>
+        <div class="drawer-header-titles">
+          <h3 id="drawer-header-title">Trạm Gateway ESP32-S3</h3>
+          <span id="drawer-header-sub">Master Hub &bull; Căn hộ thông minh</span>
+        </div>
+      </div>
+      <button type="button" class="drawer-close-btn" id="btn-close-drawer" title="Đóng bảng chi tiết">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+    </div>
+
+    <div class="drawer-body">
+      <!-- 1. Hero Card -->
+      <div class="drawer-hero-box" id="drawer-hero-box">
+        <div class="drawer-hero-left">
+          <div class="drawer-hero-icon" id="drawer-hero-icon-inner">
+            <i class="fa-solid fa-server"></i>
+          </div>
+          <div>
+            <h4 class="drawer-hero-name" id="drawer-hero-name">Trạm Gateway ESP32-S3</h4>
+            <p class="drawer-hero-sub" id="drawer-hero-sub">ESP-NOW &bull; BLE 5.0 &bull; HiveMQ Cloud</p>
+          </div>
+        </div>
+        <div class="drawer-hero-badge online" id="drawer-hero-badge">
+          <i class="fa-solid fa-circle"></i> Trực tuyến
+        </div>
+      </div>
+
+      <!-- 2. Thông Số Telemetry (cho Gateway) -->
+      <div class="drawer-tele-grid" id="drawer-tele-grid">
+        <div class="drawer-tele-item">
+          <span class="drawer-tele-label">Thời gian hoạt động (Uptime)</span>
+          <span class="drawer-tele-value" id="drawer-tele-uptime">00:24:18</span>
+        </div>
+        <div class="drawer-tele-item">
+          <span class="drawer-tele-label">Bộ nhớ RAM tự do (Heap)</span>
+          <span class="drawer-tele-value" id="drawer-tele-heap">62.1 KB</span>
+        </div>
+        <div class="drawer-tele-item">
+          <span class="drawer-tele-label">Sóng Wi-Fi 2.4GHz</span>
+          <span class="drawer-tele-value" id="drawer-tele-wifi">Dinh (-44 dBm)</span>
+        </div>
+        <div class="drawer-tele-item">
+          <span class="drawer-tele-label">Nền tảng Cloud</span>
+          <span class="drawer-tele-value" style="color: #059669;">HiveMQ TLS</span>
+        </div>
+      </div>
+
+      <!-- 3. Danh Sách Thiết Bị Của Gateway & Thêm Thiết Bị Mới (cho Gateway) -->
+      <div class="drawer-section" id="drawer-gw-child-section">
+        <div class="drawer-sec-header">
+          <h4 class="drawer-sec-title">
+            <i class="fa-solid fa-layer-group" style="color: #059669;"></i>
+            Thiết Bị Của Gateway (<span id="drawer-child-count">0</span>)
+          </h4>
+          <button type="button" class="btn-drawer-add-child" id="btn-drawer-add-child">
+            <i class="fa-solid fa-plus"></i> Thêm Thiết Bị
+          </button>
+        </div>
+        <div class="drawer-child-list" id="drawer-child-list">
+          <!-- Render danh sách thiết bị con của Gateway từ app.js -->
+        </div>
+      </div>
+
+      <!-- ── KHU VỰC QUẢN LÝ TRẠM IR HUNONIC SMART PRO (IR HUB SECTION) ─────── -->
+      <div class="drawer-ir-hub-section" id="drawer-ir-hub-section" style="display: none;">
+        <div class="drawer-section-title-row">
+          <span class="drawer-section-title">
+            <i class="fa-solid fa-satellite-dish"></i> Thiết bị kết nối trạm IR (<span id="drawer-ir-count">1</span>)
+          </span>
+          <button type="button" class="btn-drawer-sync-ir" id="btn-drawer-sync-ir" title="Đồng bộ lại từ Hunonic Cloud">
+            <i class="fa-solid fa-rotate"></i> Đồng bộ
+          </button>
+        </div>
+        <div class="drawer-ir-child-list" id="drawer-ir-child-list">
+          <!-- Render danh sách thiết bị con của trạm IR Hunonic từ app.js -->
+        </div>
+      </div>
+
+      <!-- ── KHU VỰC ĐIỀU KHIỂN RIÊNG CHO ĐIỀU HÒA (AC CONTROL PANEL) ─────── -->
+      <div class="drawer-ac-control-panel" id="drawer-ac-panel" style="display: none;">
+        <!-- Thanh quay lại danh sách thiết bị trạm IR -->
+        <div class="drawer-back-nav-bar" id="drawer-ac-back-bar" style="display: none;">
+          <button type="button" class="btn-drawer-back-link" id="btn-back-to-ir-hub">
+            <i class="fa-solid fa-arrow-left"></i> Quay lại IR Hunonic Smart Pro
+          </button>
+        </div>
+
+        <!-- 1. Ảnh Cái Điều Hòa và Trạng Thái Visual -->
+        <div class="drawer-ac-visual-card" id="drawer-ac-visual-card">
+          <div class="drawer-ac-img-wrap">
+            <img src="img/air_conditioner.jpg" alt="Máy điều hòa thông minh" class="drawer-ac-img" id="drawer-ac-img">
+            <div class="drawer-ac-glass-overlay">
+              <div class="drawer-ac-live-badge" id="drawer-ac-live-badge">
+                <span class="pulse-dot-cyan"></span>
+                <span id="drawer-ac-live-text">Đang làm mát 25°C</span>
+              </div>
+              <div class="drawer-ac-screen-temp">
+                <span id="drawer-ac-screen-num">25</span><span class="unit">°C</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Cảnh Báo Thiết Bị Ngoại Tuyến (Hunonic Offline Banner) -->
+        <div class="drawer-ac-offline-banner" id="drawer-ac-offline-banner" style="display: none;">
+          <i class="fa-solid fa-triangle-exclamation"></i>
+          <span id="drawer-ac-offline-msg">Trạm phát hồng ngoại Hunonic đang Ngoại Tuyến (Offline). Không thể phát lệnh!</span>
+        </div>
+
+        <!-- 2. Nút Bật / Tắt Lớn -->
+        <div class="drawer-ac-power-row">
+          <button type="button" class="btn-drawer-ac-power on" id="drawer-btn-power">
+            <i class="fa-solid fa-power-off"></i>
+            <span id="drawer-btn-power-text">ĐIỀU HÒA ĐANG BẬT</span>
+          </button>
+        </div>
+
+        <!-- 3. Bộ Tăng / Giảm Nhiệt Độ Lớn -->
+        <div class="drawer-temp-control-card">
+          <label class="drawer-control-label">Nhiệt độ cài đặt (°C)</label>
+          <div class="drawer-temp-dial-row">
+            <button type="button" class="btn-drawer-temp-circle" id="drawer-btn-temp-minus" title="Giảm nhiệt độ">
+              <i class="fa-solid fa-minus"></i>
+            </button>
+            <div class="drawer-temp-readout">
+              <span class="temp-val" id="drawer-temp-val">25</span>
+              <span class="temp-unit">°C</span>
+            </div>
+            <button type="button" class="btn-drawer-temp-circle" id="drawer-btn-temp-plus" title="Tăng nhiệt độ">
+              <i class="fa-solid fa-plus"></i>
+            </button>
+          </div>
+          <!-- Quick presets chips -->
+          <div class="drawer-temp-presets">
+            <button type="button" class="preset-chip" data-temp="18">18°C Lạnh sâu</button>
+            <button type="button" class="preset-chip active" data-temp="25">25°C Tiêu chuẩn</button>
+            <button type="button" class="preset-chip" data-temp="27">27°C Tiết kiệm</button>
+          </div>
+        </div>
+
+        <!-- 4. Chế Độ Hoạt Động (Mode: 5 chế độ) -->
+        <div class="drawer-mode-group">
+          <label class="drawer-control-label">Chế Độ Hoạt Động (Mode)</label>
+          <div class="drawer-pills-grid" id="drawer-mode-pills">
+            <div class="drawer-pill-opt active" data-mode="1">
+              <i class="fa-solid fa-snowflake"></i> Làm mát
+            </div>
+            <div class="drawer-pill-opt" data-mode="2">
+              <i class="fa-solid fa-fire"></i> Sưởi ấm
+            </div>
+            <div class="drawer-pill-opt" data-mode="3">
+              <i class="fa-solid fa-droplet"></i> Hút ẩm
+            </div>
+            <div class="drawer-pill-opt" data-mode="4">
+              <i class="fa-solid fa-fan"></i> Quạt gió
+            </div>
+            <div class="drawer-pill-opt" data-mode="0">
+              <i class="fa-solid fa-arrows-rotate"></i> Tự động
+            </div>
+          </div>
+        </div>
+
+        <!-- 5. Tốc Độ Gió (Fan Speed: 4 mức) -->
+        <div class="drawer-fan-group">
+          <label class="drawer-control-label">Tốc Độ Gió (Fan Speed)</label>
+          <div class="drawer-pills-grid fan-grid" id="drawer-fan-pills">
+            <div class="drawer-pill-opt active" data-fan="0">
+              <i class="fa-solid fa-a"></i> Tự động
+            </div>
+            <div class="drawer-pill-opt" data-fan="1">Nhẹ</div>
+            <div class="drawer-pill-opt" data-fan="3">Vừa</div>
+            <div class="drawer-pill-opt" data-fan="5">Mạnh</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 4. Chỉnh Sửa Thiết Bị ("chỉnh thiết bị") -->
+      <div class="drawer-section">
+        <div class="drawer-sec-header">
+          <h4 class="drawer-sec-title">
+            <i class="fa-solid fa-sliders" style="color: #3b82f6;"></i>
+            Chỉnh Sửa Thiết Bị
+          </h4>
+        </div>
+        <div class="drawer-form-group">
+          <div class="drawer-field">
+            <label>Tên thiết bị:</label>
+            <div class="drawer-input-wrap">
+              <i class="fa-solid fa-tag"></i>
+              <input type="text" id="drawer-edit-name" value="Trạm Gateway ESP32-S3">
+            </div>
+          </div>
+
+          <div class="drawer-field">
+            <label>Vị trí phòng:</label>
+            <div class="drawer-input-wrap">
+              <i class="fa-solid fa-location-dot"></i>
+              <select id="drawer-edit-room">
+                <option value="Phòng khách">Phòng khách</option>
+                <option value="Phòng ngủ">Phòng ngủ</option>
+                <option value="Nhà bếp">Nhà bếp</option>
+                <option value="Ban công">Ban công</option>
+                <option value="Sân vườn">Sân vườn</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Nút chức năng riêng của Gateway -->
+          <div class="drawer-action-btn-row" id="drawer-gw-extra-actions">
+            <button type="button" class="btn-drawer-subtle" id="btn-drawer-reconfig-wifi">
+              <i class="fa-solid fa-wifi"></i> Cấu hình Wi-Fi BLE
+            </button>
+            <button type="button" class="btn-drawer-subtle" id="btn-drawer-reboot">
+              <i class="fa-solid fa-power-off"></i> Reboot Trạm
+            </button>
+          </div>
+
+          <button type="button" class="btn-drawer-save" id="btn-drawer-save">
+            <i class="fa-solid fa-floppy-disk"></i> Lưu Thay Đổi
+          </button>
+        </div>
+      </div>
+
+      <!-- 5. Khu Vực Xóa Thiết Bị ("có xóa thiết bị") -->
+      <div class="drawer-delete-sec">
+        <div style="margin-bottom: 10px;">
+          <strong style="color: #991b1b; font-size: 0.88rem; display: block; margin-bottom: 2px;">
+            <i class="fa-solid fa-triangle-exclamation"></i> Vùng Nguy Hiểm
+          </strong>
+          <span style="font-size: 0.74rem; color: #b91c1c;">
+            Hành động này sẽ xóa và gỡ thiết bị khỏi hệ thống điều khiển.
+          </span>
+        </div>
+        <button type="button" class="btn-drawer-delete" id="btn-drawer-delete">
+          <i class="fa-solid fa-trash-can"></i> Xóa Thiết Bị Này
+        </button>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ==================================================================== -->
+  <!-- MODAL: ĐIỀU KHIỂN ĐIỀU HÒA 2 CHIỀU                                    -->
+  <!-- ==================================================================== -->
+  <div class="hvac-modal-overlay hidden" id="hvac-modal">
+    <div class="hvac-modal-card">
+      <div class="modal-header">
+        <div class="modal-title-col">
+          <h3>Điều Khiển Điều Hòa FUNIKI</h3>
+          <span class="modal-sub">Trạm Gateway ESP32-S3 &bull; Đồng bộ hai chiều</span>
+        </div>
+        <button class="modal-close-btn" id="btn-close-modal">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <div class="modal-body">
+        <!-- Power Switch -->
+        <div class="modal-power-row">
+          <button id="btn-ac-power" class="btn-power-switch off">
+            <i class="fa-solid fa-power-off"></i>
+            <span id="ac-power-text">ĐANG TẮT</span>
+          </button>
+        </div>
+
+        <!-- Temp Controller Dial -->
+        <div class="modal-temp-dial">
+          <button class="btn-temp-circle" id="btn-temp-minus">
+            <i class="fa-solid fa-minus"></i>
+          </button>
+          <div class="temp-big-display">
+            <span id="ac-temp-display">25</span>
+            <span class="unit">°C</span>
+          </div>
+          <button class="btn-temp-circle" id="btn-temp-plus">
+            <i class="fa-solid fa-plus"></i>
+          </button>
+        </div>
+
+        <!-- Mode Pills -->
+        <div class="modal-section-group">
+          <label class="group-label">Chế Độ Hoạt Động (Mode)</label>
+          <div class="pills-grid" id="mode-pills">
+            <div class="pill-opt active" data-mode="1"><i class="fa-solid fa-snowflake"></i> Làm mát</div>
+            <div class="pill-opt" data-mode="2"><i class="fa-solid fa-fire"></i> Sưởi ấm</div>
+            <div class="pill-opt" data-mode="3"><i class="fa-solid fa-droplet"></i> Hút ẩm</div>
+            <div class="pill-opt" data-mode="4"><i class="fa-solid fa-fan"></i> Quạt gió</div>
+            <div class="pill-opt" data-mode="0"><i class="fa-solid fa-arrows-rotate"></i> Tự động</div>
+          </div>
+        </div>
+
+        <!-- Fan Pills -->
+        <div class="modal-section-group">
+          <label class="group-label">Tốc Độ Gió (Fan Speed)</label>
+          <div class="pills-grid" id="fan-pills">
+            <div class="pill-opt active" data-fan="0"><i class="fa-solid fa-a"></i> Tự động</div>
+            <div class="pill-opt" data-fan="1">Nhỏ</div>
+            <div class="pill-opt" data-fan="3">Vừa</div>
+            <div class="pill-opt" data-fan="5">Lớn</div>
+          </div>
+        </div>
+
+        <!-- Gateway Actions -->
+        <div class="modal-footer-actions">
+          <button class="btn-reboot-gate-subtle" id="btn-reboot-gate">
+            <i class="fa-solid fa-power-off"></i> Khởi động lại Gateway ESP32
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================================================================== -->
+  <!-- MODAL: CẤU HÌNH WI-FI QUA BLE & THÊM TRẠM GATEWAY                   -->
+  <!-- ==================================================================== -->
+  <div class="hvac-modal-overlay hidden" id="add-gateway-modal">
+    <div class="hvac-modal-card add-gateway-card">
+      <div class="modal-header">
+        <div class="modal-title-col">
+          <h3>Thêm Thiết Bị & Cấu Hình Gateway</h3>
+          <span class="modal-sub">Web Bluetooth (BLE) &bull; Nạp Wi-Fi vào ESP32-S3</span>
+        </div>
+        <button class="modal-close-btn" id="btn-close-add-modal">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <div class="modal-body">
+        <!-- ── BƯỚC 1: Quét & Kết Nối BLE với Gateway ESP32-S3 ──────────────── -->
+        <div class="scan-gateway-stage" id="stage-ble-connect">
+          <div class="radar-scan-box ble-radar">
+            <div class="radar-pulse-ring ring-1"></div>
+            <div class="radar-pulse-ring ring-2"></div>
+            <div class="radar-pulse-ring ring-3"></div>
+            <div class="radar-center-icon ble-center-icon">
+              <i class="fa-brands fa-bluetooth-b"></i>
+            </div>
+          </div>
+
+          <div class="scan-status-text-wrap">
+            <h4 class="scan-status-title" id="ble-status-title">Quét Gateway qua Bluetooth (BLE)</h4>
+            <p class="scan-status-desc" id="ble-status-desc">
+              Trình duyệt sẽ tìm kiếm trạm Gateway ESP32-S3 (<strong>GATE_S3_CONFIG</strong>) qua chuẩn Web Bluetooth GATT.
+            </p>
+          </div>
+
+          <div class="scan-tips-card">
+            <div class="tip-line"><i class="fa-solid fa-circle-check"></i> Cấp nguồn Type-C cho ESP32-S3, LED chuyển xanh dương (BLE Config)</div>
+            <div class="tip-line"><i class="fa-solid fa-circle-check"></i> Service UUID: <strong>0x00FF</strong> &bull; SSID: <strong>0xFF01</strong> &bull; PASS: <strong>0xFF02</strong></div>
+            <div class="tip-line"><i class="fa-solid fa-circle-check"></i> Bật Bluetooth trên máy tính / điện thoại (Google Chrome hoặc Edge)</div>
+          </div>
+
+          <!-- Cảnh báo nếu Chrome chặn Web Bluetooth hoặc tài khoản trường học -->
+          <div class="ble-notice-card" id="ble-untrusted-notice" style="display:none;">
+            <div class="notice-title">
+              <i class="fa-solid fa-shield-halved"></i>
+              <span>Chrome đang khóa Web Bluetooth (Tài khoản trường học/tổ chức)</span>
+            </div>
+            <p>Tài khoản Google đang đăng nhập có chính sách quản lý chặn mở cờ Chrome & Web Bluetooth. Bạn <strong>không cần cấp quyền</strong> mà hãy chọn Wi-Fi trực tiếp ngay dưới đây:</p>
+            <div class="notice-links">
+              <button type="button" class="btn-notice-direct" id="btn-notice-skip-wifi" style="width: 100%; font-size: 14px; padding: 11px 16px; background: #059669; color: #fff; font-weight: 700; border-radius: 8px; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px;">
+                <i class="fa-solid fa-wifi"></i> BẤM VÀO ĐÂY: Chọn Wi-Fi & Đổi Mật Khẩu Ngay
+              </button>
+            </div>
+          </div>
+
+          <div class="scan-action-row">
+            <button class="btn-ble-scan" id="btn-ble-scan">
+              <i class="fa-brands fa-bluetooth-b"></i> Quét & Kết Nối BLE Trình Duyệt
+            </button>
+            <button class="btn-simulate-online" id="btn-ble-simulate" title="Cấu hình nhanh không cần quét BLE">
+              <i class="fa-solid fa-wifi"></i> Cấu hình Wi-Fi nhanh
+            </button>
+          </div>
+        </div>
+
+        <!-- ── BƯỚC 2: Hiển thị List Wi-Fi Quét Được & Nhập Password ────────── -->
+        <div class="scan-gateway-stage hidden" id="stage-wifi-picker">
+          <div class="ble-connected-banner">
+            <i class="fa-brands fa-bluetooth-b"></i>
+            <div class="ble-banner-info">
+              <strong id="ble-connected-device-name">ĐÃ KẾT NỐI BLE: GATE_S3_CONFIG</strong>
+              <p>Dịch vụ Wi-Fi GATT (0x00FF) đã sẵn sàng nhận dữ liệu.</p>
+            </div>
+          </div>
+
+          <div class="wifi-picker-section">
+            <div class="wifi-section-header">
+              <span><i class="fa-solid fa-wifi"></i> Danh sách Wi-Fi quét được (2.4GHz)</span>
+              <button class="btn-refresh-wifi" id="btn-refresh-wifi" title="Quét lại mạng Wi-Fi">
+                <i class="fa-solid fa-rotate"></i>
+              </button>
+            </div>
+
+            <!-- List Wi-Fi -->
+            <div class="wifi-scanned-container" id="wifi-scanned-container">
+              <div class="wifi-scanned-item selected" data-ssid="QuangHa">
+                <div class="wifi-item-left">
+                  <i class="fa-solid fa-wifi wifi-strong"></i>
+                  <span class="wifi-item-ssid">QuangHa</span>
+                </div>
+                <div class="wifi-item-right">
+                  <span class="wifi-lock-badge"><i class="fa-solid fa-lock"></i> WPA2</span>
+                  <span class="wifi-band-tag">2.4G</span>
+                </div>
+              </div>
+
+              <div class="wifi-scanned-item" data-ssid="ICTU_SMART_HOME_2.4G">
+                <div class="wifi-item-left">
+                  <i class="fa-solid fa-wifi wifi-strong"></i>
+                  <span class="wifi-item-ssid">ICTU_SMART_HOME_2.4G</span>
+                </div>
+                <div class="wifi-item-right">
+                  <span class="wifi-lock-badge"><i class="fa-solid fa-lock"></i> WPA2</span>
+                  <span class="wifi-band-tag">2.4G</span>
+                </div>
+              </div>
+
+              <div class="wifi-scanned-item" data-ssid="Viettel_Home_IoT">
+                <div class="wifi-item-left">
+                  <i class="fa-solid fa-wifi wifi-med"></i>
+                  <span class="wifi-item-ssid">Viettel_Home_IoT</span>
+                </div>
+                <div class="wifi-item-right">
+                  <span class="wifi-lock-badge"><i class="fa-solid fa-lock"></i> WPA2</span>
+                  <span class="wifi-band-tag">2.4G</span>
+                </div>
+              </div>
+
+              <div class="wifi-scanned-item" data-ssid="FPT_Telecom_2.4G">
+                <div class="wifi-item-left">
+                  <i class="fa-solid fa-wifi wifi-med"></i>
+                  <span class="wifi-item-ssid">FPT_Telecom_2.4G</span>
+                </div>
+                <div class="wifi-item-right">
+                  <span class="wifi-lock-badge"><i class="fa-solid fa-lock"></i> WPA2</span>
+                  <span class="wifi-band-tag">2.4G</span>
+                </div>
+              </div>
+
+              <div class="wifi-scanned-item manual-item" data-ssid="">
+                <div class="wifi-item-left">
+                  <i class="fa-solid fa-pen-to-square"></i>
+                  <span class="wifi-item-ssid">Nhập tên Wi-Fi khác (Ẩn danh/Thủ công)...</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Form chỉnh sửa SSID & Mật Khẩu -->
+            <div class="wifi-credentials-form">
+              <div class="cred-input-wrap">
+                <label>Tên Wi-Fi (SSID nạp vào 0xFF01)</label>
+                <div class="input-with-icon">
+                  <i class="fa-solid fa-wifi"></i>
+                  <input type="text" id="ble-wifi-ssid" value="QuangHa" placeholder="Nhập tên Wi-Fi...">
+                </div>
+              </div>
+
+              <div class="cred-input-wrap">
+                <label>Mật Khẩu Wi-Fi (PASS nạp vào 0xFF02)</label>
+                <div class="input-with-icon">
+                  <i class="fa-solid fa-key"></i>
+                  <input type="password" id="ble-wifi-pass" value="66668888" placeholder="Nhập mật khẩu Wi-Fi...">
+                  <button type="button" class="btn-eye-toggle" id="btn-toggle-ble-pass" title="Hiện/ẩn mật khẩu">
+                    <i class="fa-solid fa-eye" id="pass-eye-icon"></i>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div class="wifi-action-buttons">
+              <button class="btn-ble-send-config" id="btn-ble-send-config">
+                <i class="fa-solid fa-paper-plane"></i> GỬI CẤU HÌNH VÀO GATEWAY (BLE)
+              </button>
+              <button class="btn-rescan-subtle" id="btn-ble-disconnect">
+                <i class="fa-solid fa-arrow-left"></i> Quét lại BLE
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── BƯỚC 3: Đang Nạp Cấu Hình & Chờ Gateway Kết Nối Mạng ───────────── -->
+        <div class="scan-gateway-stage hidden" id="stage-ble-sending">
+          <div class="radar-scan-box">
+            <div class="radar-pulse-ring ring-1"></div>
+            <div class="radar-pulse-ring ring-2"></div>
+            <div class="radar-pulse-ring ring-3"></div>
+            <div class="radar-center-icon">
+              <i class="fa-solid fa-satellite-dish"></i>
+            </div>
+          </div>
+
+          <div class="scan-status-text-wrap">
+            <h4 class="scan-status-title" id="sending-status-title">Đang nạp cấu hình Wi-Fi vào Gateway...</h4>
+            <p class="scan-status-desc" id="sending-status-desc">
+              Đang ghi dữ liệu vào Characteristic 0xFF01 (SSID) và 0xFF02 (Password)...
+            </p>
+          </div>
+
+          <div class="sending-steps-list">
+            <div class="sending-step-line done" id="step-send-ssid">
+              <i class="fa-solid fa-circle-check"></i>
+              <span>Ghi SSID vào Characteristic <strong>0xFF01</strong></span>
+            </div>
+            <div class="sending-step-line in-progress" id="step-send-pass">
+              <i class="fa-solid fa-spinner fa-spin"></i>
+              <span>Ghi Password vào Characteristic <strong>0xFF02</strong></span>
+            </div>
+            <div class="sending-step-line pending" id="step-wait-online">
+              <i class="fa-solid fa-clock"></i>
+              <span>ESP32-S3 khởi động kết nối Wi-Fi & MQTT Cloud HiveMQ</span>
+            </div>
+          </div>
+
+          <div class="scan-action-row" style="margin-top: 15px;">
+            <button class="btn-check-gate-now" id="btn-check-sending-now">
+              <i class="fa-solid fa-rotate"></i> Kiểm tra Gateway ngay
+            </button>
+            <button class="btn-simulate-online" id="btn-simulate-sending-online">
+              <i class="fa-solid fa-wand-magic-sparkles"></i> Mô phỏng Gateway đã kết nối xong
+            </button>
+          </div>
+        </div>
+
+        <!-- ── BƯỚC 4: Gateway Đã Online & Quét Thành Công Các Thiết Bị ──────── -->
+        <div class="scan-gateway-stage hidden" id="stage-devices-found">
+          <div class="found-success-banner">
+            <i class="fa-solid fa-circle-check"></i>
+            <div>
+              <strong>ĐÃ KẾT NỐI TRẠM GATEWAY THÀNH CÔNG!</strong>
+              <p>Gateway ESP32-S3 đã nhận Wi-Fi, kết nối Cloud sẵn sàng hoạt động:</p>
+            </div>
+          </div>
+
+          <div class="detected-devices-list">
+            <div class="detected-device-item">
+              <div class="item-icon-col icon-gw"><i class="fa-solid fa-microchip"></i></div>
+              <div class="item-text-col">
+                <span class="item-name">ESP32-S3 Gateway Master Hub</span>
+                <span class="item-meta" id="found-gw-meta">Uptime: 00:00:00 &bull; Free RAM: Sẵn sàng</span>
+              </div>
+              <span class="badge-status-ready">Sẵn sàng</span>
+            </div>
+          </div>
+
+          <div class="found-action-buttons">
+            <button class="btn-confirm-add-all" id="btn-confirm-add-all">
+              <i class="fa-solid fa-plus-circle"></i> XÁC NHẬN THÊM VÀO PHÒNG
+            </button>
+            <button class="btn-rescan-subtle" id="btn-rescan-gate">
+              <i class="fa-solid fa-rotate"></i> Cấu hình lại
+            </button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================================================================== -->
+  <!-- MODAL: QUẢN LÝ TRẠM GATEWAY & THÊM THIẾT BỊ MỚI                     -->
+  <!-- ==================================================================== -->
+  <div class="hvac-modal-overlay hidden" id="gateway-manage-modal">
+    <div class="gateway-manage-card">
+      <div class="modal-header">
+        <div class="modal-title-col">
+          <div style="display: flex; align-items: center; gap: 10px;">
+            <div class="gw-modal-header-icon"><i class="fa-solid fa-server"></i></div>
+            <div>
+              <h3>Trạm Gateway ESP32-S3 (Master Hub)</h3>
+              <span class="modal-sub">Điều phối trung tâm &bull; Sóng ESP-NOW, BLE & Wi-Fi Cloud</span>
+            </div>
+          </div>
+        </div>
+        <button class="modal-close-btn" id="btn-close-gw-modal">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <!-- Navigation Tabs -->
+      <div class="gw-modal-tabs">
+        <button class="gw-tab-btn active" data-tab="tab-linked-devices" id="tab-btn-linked">
+          <i class="fa-solid fa-layer-group"></i> Thiết Bị Đã Liên Kết (<span id="gw-device-count">0</span>)
+        </button>
+        <button class="gw-tab-btn" data-tab="tab-add-new-device" id="tab-btn-add">
+          <i class="fa-solid fa-plus-circle"></i> + Thêm Thiết Bị Mới
+        </button>
+        <button class="gw-tab-btn" data-tab="tab-gw-telemetry" id="tab-btn-telemetry">
+          <i class="fa-solid fa-microchip"></i> Thông Số Trạm
+        </button>
+      </div>
+
+      <div class="gw-modal-body">
+        <!-- ── TAB 1: THIẾT BỊ ĐÃ LIÊN KẾT ───────────────────────────────── -->
+        <div class="gw-tab-content active" id="tab-linked-devices">
+          <div class="linked-devices-list" id="linked-devices-list">
+            <!-- Render động từ JS -->
+          </div>
+          <div style="margin-top: 15px; text-align: center;">
+            <button type="button" class="btn-goto-add-device" id="btn-goto-add-device">
+              <i class="fa-solid fa-plus"></i> Thêm Thiết Bị Mới Vào Trạm Gateway Này
+            </button>
+          </div>
+        </div>
+
+        <!-- ── TAB 2: THÊM THIẾT BỊ MỚI VÀO GATEWAY ──────────────────────── -->
+        <div class="gw-tab-content" id="tab-add-new-device" style="display: none;">
+          <!-- 1. PHẦN CÁC THIẾT BỊ ĐANG ONLINE PHÁT HIỆN TỪ SERVER / CLOUD -->
+          <div class="discovered-section">
+            <div class="discovered-header-row">
+              <div class="discovered-header-text">
+                <h4 class="form-section-title"><i class="fa-solid fa-radar text-green"></i> Thiết Bị Đang Trực Tuyến Sẵn Sàng Kết Nối:</h4>
+                <p class="section-desc">Hệ thống tự động phát hiện thiết bị qua Hunonic Cloud IR, sóng ESP-NOW và ngõ ra Gateway. Bấm <strong>"+ Thêm Vào Phòng"</strong> để kết nối ngay vào phòng của bạn.</p>
+              </div>
+              <button type="button" class="btn-refresh-discovered" id="btn-refresh-discovered" title="Đồng bộ và quét lại thiết bị">
+                <i class="fa-solid fa-arrows-rotate"></i> <span>Quét lại</span>
+              </button>
+            </div>
+
+            <!-- Danh sách các thẻ thiết bị online tìm thấy (Render động) -->
+            <div class="discovered-devices-grid" id="discovered-devices-grid">
+              <!-- Sẽ render động từ hàm renderDiscoveredDevices() trong JS -->
+            </div>
+          </div>
+
+          <!-- 2. PHẦN THÊM THỦ CÔNG (TỰ NHẬP THÔNG SỐ) -->
+          <div class="manual-add-section">
+            <div class="manual-toggle-header" id="btn-toggle-manual-add">
+              <div class="manual-toggle-title">
+                <i class="fa-solid fa-sliders"></i>
+                <span>Thêm Thiết Bị Khác Thủ Công (Tự Đặt Tên & Nhập MAC/ID)</span>
+              </div>
+              <i class="fa-solid fa-chevron-down toggle-icon" id="manual-toggle-icon"></i>
+            </div>
+
+            <div class="add-device-form-wrap collapsed" id="manual-add-form-wrap">
+              <h5 class="sub-form-title">Chọn loại thiết bị muốn thêm:</h5>
+              <div class="device-type-selector" id="device-type-selector">
+                <div class="type-card active" data-type="espnow">
+                  <i class="fa-solid fa-satellite-dish"></i>
+                  <span>Node Cảm Biến (ESP-NOW)</span>
+                </div>
+                <div class="type-card" data-type="ac">
+                  <i class="fa-solid fa-wind"></i>
+                  <span>Điều Hòa (Hồng Ngoại IR)</span>
+                </div>
+                <div class="type-card" data-type="relay">
+                  <i class="fa-solid fa-lightbulb"></i>
+                  <span>Công Tắc / Relay</span>
+                </div>
+                <div class="type-card" data-type="socket">
+                  <i class="fa-solid fa-plug"></i>
+                  <span>Ổ Cắm Thông Minh</span>
+                </div>
+              </div>
+
+              <div class="form-inputs-group">
+                <div class="form-row">
+                  <label>Tên thiết bị:</label>
+                  <div class="input-with-icon">
+                    <i class="fa-solid fa-tag"></i>
+                    <input type="text" id="new-device-name" placeholder="VD: Cảm biến phòng ngủ, Đèn ban công..." value="Node Cảm Biến Mới">
+                  </div>
+                </div>
+
+                <div class="form-row">
+                  <label>Vị trí / Khu vực phòng:</label>
+                  <div class="input-with-icon">
+                    <i class="fa-solid fa-location-dot"></i>
+                    <select id="new-device-room">
+                      <option value="Phòng khách">Phòng khách</option>
+                      <option value="Phòng ngủ">Phòng ngủ</option>
+                      <option value="Ban công">Ban công</option>
+                      <option value="Nhà bếp">Nhà bếp</option>
+                      <option value="Sân vườn">Sân vườn</option>
+                    </select>
+                  </div>
+                </div>
+
+                <!-- Cấu hình động cho từng loại thiết bị -->
+                <div class="form-row" id="dynamic-device-field">
+                  <label id="dynamic-field-label">Địa chỉ MAC Node (ESP-NOW):</label>
+                  <div class="input-with-icon">
+                    <i class="fa-solid fa-network-wired" id="dynamic-field-icon"></i>
+                    <input type="text" id="dynamic-field-value" placeholder="VD: 30:AE:A4:07:0B:84" value="30:AE:A4:07:0B:84">
+                  </div>
+                </div>
+              </div>
+
+              <div class="form-action-row">
+                <button type="button" class="btn-submit-add-device" id="btn-submit-add-device">
+                  <i class="fa-solid fa-circle-check"></i> XÁC NHẬN THÊM THIẾT BỊ VÀO GATEWAY
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── TAB 3: THÔNG SỐ VÀ CẤU HÌNH GATEWAY ────────────────────────── -->
+        <div class="gw-tab-content" id="tab-gw-telemetry" style="display: none;">
+          <div class="gw-telemetry-grid">
+            <div class="telemetry-box">
+              <span class="t-label">Trạng thái kết nối</span>
+              <span class="t-value text-green" id="gw-modal-online">Online (HiveMQ Cloud)</span>
+            </div>
+            <div class="telemetry-box">
+              <span class="t-label">Thời gian hoạt động (Uptime)</span>
+              <span class="t-value" id="gw-modal-uptime">00:08:12</span>
+            </div>
+            <div class="telemetry-box">
+              <span class="t-label">Bộ nhớ RAM tự do (Heap)</span>
+              <span class="t-value" id="gw-modal-heap">248.5 KB</span>
+            </div>
+            <div class="telemetry-box">
+              <span class="t-label">Cường độ Wi-Fi (RSSI)</span>
+              <span class="t-value text-blue" id="gw-modal-rssi">-57 dBm (Dinh )</span>
+            </div>
+            <div class="telemetry-box">
+              <span class="t-label">Phiên bản Firmware</span>
+              <span class="t-value">ESP32-S3 v1.0.0 (OTA)</span>
+            </div>
+            <div class="telemetry-box">
+              <span class="t-label">Giao thức truyền thông</span>
+              <span class="t-value">2.4GHz ESP-NOW &bull; BLE 5.0</span>
+            </div>
+          </div>
+
+          <div class="gw-system-actions">
+            <button type="button" class="btn-gw-reconfig-wifi" id="btn-gw-reconfig-wifi">
+              <i class="fa-solid fa-wifi"></i> Cấu hình Wi-Fi BLE
+            </button>
+            <button type="button" class="btn-gw-reboot" id="btn-gw-reboot">
+              <i class="fa-solid fa-power-off"></i> Khởi động lại Gateway
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Hidden elements to preserve backward compatibility for metrics in app.js -->
+  <div style="display:none;">
+    <span id="user-name">admin</span>
+    <span id="user-initial">A</span>
+    <span id="gw-uptime">--</span>
+    <span id="gw-heap">--</span>
+    <span id="gw-rssi">--</span>
+    <span id="gw-packets">--</span>
+    <span id="gw-hunonic-ws">--</span>
+    <span id="gw-fw">--</span>
+    <span id="sensor-temp">--</span>
+    <span id="sensor-hum">--</span>
+    <span id="sensor-rssi">--</span>
+  </div>
+
+  <!-- Toast Notification Container -->
+  <div id="toast-container" class="toast-container"></div>
+
+  <script src="js/app.js?v=55"></script>
+</body>
+</html>

@@ -219,6 +219,8 @@ esp_err_t ble_wifi_stop(void) {
   ESP_LOGI(TAG, "Stopping BLE...");
   ble_gap_adv_stop();
   int rc = nimble_port_stop();
+  vTaskDelay(pdMS_TO_TICKS(100));
+  nimble_port_deinit();
   s_ble_is_running = false;
   return (rc == 0) ? ESP_OK : ESP_FAIL;
 }

@@ -210,49 +210,49 @@ esp_err_t hunonic_bridge_sync_devices(void) {
     return ESP_ERR_INVALID_STATE;
   }
 
-  char *resp_buf = (char *)malloc(HTTP_RESP_BUFFER_SIZE);
-  if (!resp_buf)
-    return ESP_ERR_NO_MEM;
-  memset(resp_buf, 0, HTTP_RESP_BUFFER_SIZE);
+  char *resp_buf = NULL;
+  for (int attempt = 0; attempt < 2; attempt++) {
+    resp_buf = (char *)malloc(HTTP_RESP_BUFFER_SIZE);
+    if (!resp_buf)
+      return ESP_ERR_NO_MEM;
+    memset(resp_buf, 0, HTTP_RESP_BUFFER_SIZE);
 
-  http_response_buffer_t resp = {.buffer = resp_buf, .buffer_len = 0};
+    http_response_buffer_t resp = {.buffer = resp_buf, .buffer_len = 0};
 
-  esp_http_client_config_t config = {
-      .url = HUNONIC_API_DEVICE_LIST_URL,
-      .method = HTTP_METHOD_GET,
-      .crt_bundle_attach = esp_crt_bundle_attach,
-      .event_handler = http_event_handler,
-      .user_data = &resp,
-      .timeout_ms = 15000,
-  };
+    esp_http_client_config_t config = {
+        .url = HUNONIC_API_DEVICE_LIST_URL,
+        .method = HTTP_METHOD_GET,
+        .crt_bundle_attach = esp_crt_bundle_attach,
+        .event_handler = http_event_handler,
+        .user_data = &resp,
+        .timeout_ms = 15000,
+    };
 
-  esp_http_client_handle_t client = esp_http_client_init(&config);
+    esp_http_client_handle_t client = esp_http_client_init(&config);
 
-  char auth_header[TOKEN_MAX_LEN + 16];
-  snprintf(auth_header, sizeof(auth_header), "Bearer %s", s_token);
-  esp_http_client_set_header(client, "Authorization", auth_header);
-  esp_http_client_set_header(client, "Accept", "application/json");
+    char auth_header[TOKEN_MAX_LEN + 16];
+    snprintf(auth_header, sizeof(auth_header), "Bearer %s", s_token);
+    esp_http_client_set_header(client, "Authorization", auth_header);
+    esp_http_client_set_header(client, "Accept", "application/json");
 
-  ESP_LOGI(TAG, "Dang dong bo danh sach thiet bi tu Hunonic Cloud...");
-  esp_err_t err = esp_http_client_perform(client);
-  int status_code = esp_http_client_get_status_code(client);
-  esp_http_client_cleanup(client);
+    ESP_LOGI(TAG, "Dang dong bo danh sach thiet bi tu Hunonic Cloud (lan %d)...", attempt + 1);
+    esp_err_t err = esp_http_client_perform(client);
+    int status_code = esp_http_client_get_status_code(client);
+    esp_http_client_cleanup(client);
 
-  if (err != ESP_OK || status_code != 200) {
-    ESP_LOGE(TAG, "Sync thiet bi that bai: err=%d, HTTP status=%d", err,
-             status_code);
-    if (resp_buf && strlen(resp_buf) > 0) {
-      ESP_LOGE(TAG, "Phan hoi tu server: %s", resp_buf);
-    }
-    free(resp_buf);
+    if (err != ESP_OK || status_code != 200) {
+      ESP_LOGE(TAG, "Sync thiet bi that bai: err=%d, HTTP status=%d", err,
+               status_code);
+      if (resp_buf && strlen(resp_buf) > 0) {
+        ESP_LOGE(TAG, "Phan hoi tu server: %s", resp_buf);
+      }
+      free(resp_buf);
+      resp_buf = NULL;
 
-    static int s_relogin_retry_cnt = 0;
-
-    if ((status_code == 401 || status_code == 403 || status_code == 500 ||
-         status_code == 400) &&
-        strlen(s_phone) > 0 && strlen(s_password) > 0) {
-      if (s_relogin_retry_cnt < 2) {
-        s_relogin_retry_cnt++;
+      if (attempt == 0 &&
+          (status_code == 401 || status_code == 403 || status_code == 500 ||
+           status_code == 400) &&
+          strlen(s_phone) > 0 && strlen(s_password) > 0) {
         ESP_LOGW(
             TAG,
             "Phat hien Token bi mat quyen/thiet bi khac dang nhap (HTTP %d)!",
@@ -264,12 +264,16 @@ esp_err_t hunonic_bridge_sync_devices(void) {
           ESP_LOGI(TAG, "Re-Login thanh cong! Khoi dong lai WebSocket voi "
                         "Token chu quyen moi...");
           hunonic_ws_start();
-          s_relogin_retry_cnt = 0;
-          return hunonic_bridge_sync_devices();
+          continue;
         }
       }
+      return ESP_FAIL;
     }
-    s_relogin_retry_cnt = 0;
+
+    break; // Sync HTTP thanh cong -> tiep tuc xu ly JSON
+  }
+
+  if (!resp_buf) {
     return ESP_FAIL;
   }
 
@@ -517,11 +521,12 @@ static void hunonic_ws_subscribe_all(void) {
   }
 }
 
-static void update_ac_state_and_notify(const char *device_id, int power,
-                                       int temp, int mode, int fan,
+static void update_ac_state_and_notify(const char *device_id, int brand,
+                                       int power, int temp, int mode, int fan,
                                        const char *source_event) {
   hunonic_ac_device_t *target = NULL;
 
+  // 1. Uu tien tim theo device_id neu co
   if (device_id && strlen(device_id) > 0) {
     for (int i = 0; i < s_ac_count; i++) {
       if (s_ac_devices[i].is_valid &&
@@ -532,13 +537,24 @@ static void update_ac_state_and_notify(const char *device_id, int power,
     }
   }
 
-  // Neu khong tim thay theo ID nhung chi co duy nhat 1 dieu hoa
-  if (!target && s_ac_count > 0 && s_ac_devices[0].is_valid) {
+  // 2. Neu thong diep khong co device_id, tim theo ma Brand (vi du 104 = Funiki, 117 = Mirage)
+  if (!target && brand > 0) {
+    for (int i = 0; i < s_ac_count; i++) {
+      if (s_ac_devices[i].is_valid && s_ac_devices[i].brand == brand) {
+        target = &s_ac_devices[i];
+        break;
+      }
+    }
+  }
+
+  // 3. Neu khong tim thay theo ID va Brand, nhung chi co duy nhat 1 dieu hoa
+  if (!target && s_ac_count == 1 && s_ac_devices[0].is_valid) {
     target = &s_ac_devices[0];
   }
 
   if (!target) {
-    ESP_LOGW(TAG, "Khong tim thay thiet bi dieu hoa phu hop de cap nhat!");
+    ESP_LOGW(TAG, "Khong tim thay thiet bi dieu hoa phu hop (ID='%s', Brand=%d) de cap nhat!",
+             device_id ? device_id : "", brand);
     return;
   }
 
@@ -567,7 +583,7 @@ static void update_ac_state_and_notify(const char *device_id, int power,
            target->power, target->temp, target->mode, target->fan,
            changed ? "CO" : "KHONG");
 
-  if (s_state_cb) {
+  if (changed && s_state_cb) {
     s_state_cb(target, s_state_cb_arg);
   }
 }
@@ -583,7 +599,7 @@ static void parse_ws_device_message(cJSON *msg) {
   const char *dev_id =
       (id_item && id_item->valuestring) ? id_item->valuestring : "";
 
-  int power = -1, temp = -1, mode = -1, fan = -1;
+  int power = -1, temp = -1, mode = -1, fan = -1, brand = -1;
   bool found_state = false;
 
   // 1. Truong hop AC_STATE (IR Hub phan hoi ket qua sau khi ban IR)
@@ -598,11 +614,14 @@ static void parse_ws_device_message(cJSON *msg) {
       }
 
       if (st) {
+        cJSON *b = cJSON_GetObjectItem(st, "brand");
         cJSON *p = cJSON_GetObjectItem(st, "power");
         cJSON *t = cJSON_GetObjectItem(st, "temp");
         cJSON *m = cJSON_GetObjectItem(st, "mode");
         cJSON *f = cJSON_GetObjectItem(st, "fan");
 
+        if (b)
+          brand = b->valueint;
         if (p)
           power = p->valueint;
         if (t)
@@ -630,11 +649,14 @@ static void parse_ws_device_message(cJSON *msg) {
       }
 
       if (act) {
+        cJSON *b = cJSON_GetObjectItem(act, "brand");
         cJSON *p = cJSON_GetObjectItem(act, "power");
         cJSON *t = cJSON_GetObjectItem(act, "temp");
         cJSON *m = cJSON_GetObjectItem(act, "mode");
         cJSON *f = cJSON_GetObjectItem(act, "fan");
 
+        if (b)
+          brand = b->valueint;
         if (p)
           power = p->valueint;
         if (t)
@@ -653,10 +675,13 @@ static void parse_ws_device_message(cJSON *msg) {
 
   // 3. Truong hop thong diep truc tiep co power / action
   if (!found_state) {
+    cJSON *b = cJSON_GetObjectItem(msg, "brand");
     cJSON *p = cJSON_GetObjectItem(msg, "power");
     cJSON *t = cJSON_GetObjectItem(msg, "temp");
     cJSON *m = cJSON_GetObjectItem(msg, "mode");
     cJSON *f = cJSON_GetObjectItem(msg, "fan");
+    if (b)
+      brand = b->valueint;
     if (p || t) {
       if (p)
         power = p->valueint;
@@ -671,7 +696,7 @@ static void parse_ws_device_message(cJSON *msg) {
   }
 
   if (found_state) {
-    update_ac_state_and_notify(dev_id, power, temp, mode, fan, evt_str);
+    update_ac_state_and_notify(dev_id, brand, power, temp, mode, fan, evt_str);
   }
 }
 
@@ -844,6 +869,16 @@ static esp_err_t hunonic_ws_start(void) {
 esp_err_t hunonic_bridge_control(const char *device_id, int power, int temp,
                                  int mode, int fan) {
   if (!s_is_ws_connected || !s_ws_client) {
+    ESP_LOGW(TAG, "WebSocket dang ket noi/khoi tao lai, cho toi da 2.5s...");
+    for (int retry = 0; retry < 25; retry++) {
+      vTaskDelay(pdMS_TO_TICKS(100));
+      if (s_is_ws_connected && s_ws_client) {
+        break;
+      }
+    }
+  }
+
+  if (!s_is_ws_connected || !s_ws_client) {
     ESP_LOGE(TAG, "WebSocket chua ket noi, khong the gui lenh");
     return ESP_ERR_INVALID_STATE;
   }
@@ -935,7 +970,13 @@ esp_err_t hunonic_bridge_control(const char *device_id, int power, int temp,
            target->id, power, temp, mode, fan);
 
   int sent = esp_websocket_client_send_text(
-      s_ws_client, ws_frame, strlen(ws_frame), pdMS_TO_TICKS(3000));
+      s_ws_client, ws_frame, strlen(ws_frame), pdMS_TO_TICKS(2000));
+  if (sent < 0) {
+    ESP_LOGW(TAG, "Gui frame WS lan 1 that bai, thu lai sau 300ms...");
+    vTaskDelay(pdMS_TO_TICKS(300));
+    sent = esp_websocket_client_send_text(
+        s_ws_client, ws_frame, strlen(ws_frame), pdMS_TO_TICKS(2000));
+  }
   free(ws_frame);
 
   if (sent < 0) {
@@ -989,7 +1030,7 @@ void hunonic_bridge_register_state_cb(hunonic_ac_state_cb_t cb, void *arg) {
 }
 
 esp_err_t hunonic_bridge_init(const char *phone, const char *password) {
-  ESP_LOGI(TAG, "=== Khoi dong Hunonic Integration Bridge ===");
+  ESP_LOGI(TAG, "Khoi dong Hunonic Integration Bridge ");
 
   if (phone)
     strncpy(s_phone, phone, sizeof(s_phone) - 1);

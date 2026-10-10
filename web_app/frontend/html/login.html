@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Đăng Nhập • IoT Gateway & HVAC Smart Control</title>
+  
+  <!-- Google Fonts: Outfit & Plus Jakarta Sans -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800;900&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  
+  <link rel="stylesheet" href="css/login.css?v=20">
+</head>
+<body>
+
+  <!-- Main Background Container -->
+  <div class="login-viewport">
+    
+    <!-- Outer Card Container -->
+    <div class="auth-card">
+      
+      <!-- ==================================================================== -->
+      <!-- LEFT PANEL: Emerald Green with Organic Curves & Welcome Message     -->
+      <!-- ==================================================================== -->
+      <div class="panel-welcome">
+        
+        <!-- Curved Organic Wave Elements -->
+        <div class="green-blob-curve blob-top"></div>
+        <div class="green-blob-curve blob-bottom"></div>
+        <div class="green-divider-bulge"></div>
+
+        <div class="welcome-content">
+          <!-- Logo Circle Badge -->
+          <div class="brand-badge-circle">
+            <svg class="brand-icon-flame" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M12 2C9.5 5 7 7.5 7 11.5c0 3 2.2 5.5 5 5.5s5-2.5 5-5.5C17 7.5 14.5 5 12 2zm0 13c-1.7 0-3-1.3-3-3 0-1.4 1-2.8 2-4 .5 1.5 1.5 2 2 3 .5-1 1-1.5 1-2 1 1.2 2 2.6 2 4 0 1.7-1.3 3-4 3z"/>
+              <path d="M12 22c-5.5 0-10-4.5-10-10 0-2.8 1.1-5.3 3-7.2.2.3.4.6.7.9C4.3 7.2 3.5 9.2 3.5 11.5c0 4.7 3.8 8.5 8.5 8.5s8.5-3.8 8.5-8.5c0-2.3-.8-4.3-2.2-5.8.3-.3.5-.6.7-.9 1.9 1.9 3 4.4 3 7.2 0 5.5-4.5 10-10 10z" opacity="0.3"/>
+            </svg>
+          </div>
+          
+          <div class="brand-title">blueflame</div>
+          <div class="brand-sub">GATEWAY &bull; HVAC</div>
+
+          <h1 class="welcome-heading">Welcome Back!</h1>
+          <p class="welcome-description">
+            To stay connected with us please login with your personal info
+          </p>
+
+          <a href="/docs" target="_blank" class="btn-sign-in-pill" title="Xem Tài Liệu API Swagger UI">
+            SIGN IN / API DOCS
+          </a>
+
+          <div class="welcome-meta-footer">
+            <span>CREATOR: NAM</span>
+            <span class="meta-dot">&bull;</span>
+            <span>DIRECTOR: ICTU</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- ==================================================================== -->
+      <!-- RIGHT PANEL: Clean White Form with Top-Right Green Accent Curve     -->
+      <!-- ==================================================================== -->
+      <div class="panel-form">
+        <!-- Top-Right Accent Curve -->
+        <div class="top-right-green-accent"></div>
+
+        <div class="form-content-wrap">
+          <div class="form-header">
+            <h2 class="form-main-title">welcome</h2>
+            <p class="form-sub-title">Login in to your account to continue</p>
+          </div>
+
+          <form id="login-form" class="auth-form" autocomplete="off">
+            
+            <!-- Input 1: Username / Email -->
+            <div class="input-pill-wrapper">
+              <input 
+                type="text" 
+                id="username" 
+                name="username" 
+                class="pill-input" 
+                placeholder="Email.........." 
+                required 
+                value="admin"
+                spellcheck="false"
+              >
+            </div>
+
+            <!-- Input 2: Password with Toggle Eye -->
+            <div class="input-pill-wrapper password-field">
+              <input 
+                type="password" 
+                id="password" 
+                name="password" 
+                class="pill-input" 
+                placeholder="Password.........." 
+                required 
+                value="admin123"
+              >
+              <button type="button" id="btn-toggle-pwd" class="btn-eye-toggle" title="Hiện/Ẩn mật khẩu">
+                <svg id="eye-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8z"></path>
+                  <circle cx="12" cy="12" r="3"></circle>
+                </svg>
+              </button>
+            </div>
+
+            <!-- Forgot Password Link -->
+            <div class="form-meta-row">
+              <a href="javascript:void(0)" id="link-forgot-pwd" class="link-forgot-pwd">
+                Forgot your password?
+              </a>
+            </div>
+
+            <!-- Solid Pill Submit Button -->
+            <div class="submit-btn-row">
+              <button type="submit" id="btn-submit" class="btn-log-in-pill">
+                <span class="btn-text">LOG IN</span>
+                <div class="spinner-ring hidden" id="login-spinner"></div>
+              </button>
+            </div>
+
+            <!-- Footer: Sign Up & Swagger Link -->
+            <div class="form-footer-action">
+              <p class="footer-signup-text">
+                Don't have an account? <a href="/docs" target="_blank" class="link-sign-up">sign up</a>
+              </p>
+            </div>
+
+          </form>
+        </div>
+      </div>
+
+    </div>
+
+  </div>
+
+  <!-- Toast Container -->
+  <div id="toast-container" class="toast-container"></div>
+
+  <script src="js/login.js?v=20"></script>
+</body>
+</html>

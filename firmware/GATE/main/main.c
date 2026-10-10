@@ -113,7 +113,7 @@ void app_main(void) {
   xTaskCreate(m_state_machine_task, "m_state_machine", 8192, NULL, 5, NULL);
   xTaskCreate(button_task, "button_task", 4096, NULL, 5, NULL);
   xTaskCreate(led_task, "led_task", 2048, NULL, 2, NULL);
-  xTaskCreate(gate_controller_task, "gate_ctrl_task", 8192, NULL, 3, NULL);
+  xTaskCreate(gate_controller_task, "gate_ctrl_task", 10240, NULL, 3, NULL);
 
   ESP_LOGI(TAG, "Hệ thống Gateway ESP32-S3 đã sẵn sàng!");
 }
