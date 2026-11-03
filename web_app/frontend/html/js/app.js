@@ -933,6 +933,9 @@ document.addEventListener("DOMContentLoaded", () => {
       }
       return Boolean(dev.online);
     }
+    if (dev.type === "sensor" || dev.id === "dev_espnow_node_1") {
+      return sensorData.hasData && sensorData.isOnline === true;
+    }
     return dev.online !== false;
   }
 
@@ -2083,7 +2086,7 @@ document.addEventListener("DOMContentLoaded", () => {
           </div>
           <div class="hunonic-card-bottom">
             <h4 class="hunonic-card-title">${escapeHtml(foundHub ? foundHub.name : "IR trung tâm")}</h4>
-            <p class="hunonic-card-sub ${isIrOnline ? 'on' : ''}">Thiết bị con: ${irChildCount}</p>
+            <p class="hunonic-card-sub ${isIrOnline ? 'on' : ''}">${isIrOnline ? 'Trực tuyến' : 'Ngoại tuyến'} &bull; Thiết bị con: ${irChildCount}</p>
           </div>
         </div>
 
@@ -2093,11 +2096,11 @@ document.addEventListener("DOMContentLoaded", () => {
             <div class="hunonic-hex-icon">
               ${getSensorHexSvg()}
             </div>
-            ${getWifiHunonicSvg(hasSensor && isGatewayOnline)}
+            ${getWifiHunonicSvg(sensorData.isOnline && isGatewayOnline)}
           </div>
           <div class="hunonic-card-bottom">
             <h4 class="hunonic-card-title">Node Cảm Biến C3</h4>
-            <p class="hunonic-card-sub ${hasSensor ? 'on' : ''}">${sensorData.temp > 0 ? `${sensorData.temp.toFixed(1)}°C &bull; ${sensorData.hum.toFixed(1)} ${sensorData.hum > 120 ? "hPa" : "%"}` : 'ESP-NOW 2.4GHz'}${getNodePresenceHtml(sensorData.isOnline)}</p>
+            <p class="hunonic-card-sub ${hasSensor ? 'on' : ''}">${sensorData.temp > 0 ? `${sensorData.temp.toFixed(1)}°C &bull; ${sensorData.hum.toFixed(1)} ${sensorData.hum > 120 ? "hPa" : "%"}` : 'ESP-NOW 2.4GHz'}<span style="display:block;">${sensorData.isOnline && isGatewayOnline ? 'Trực tuyến' : 'Ngoại tuyến'}</span>${getNodePresenceHtml(sensorData.isOnline && isGatewayOnline)}</p>
           </div>
         </div>
 
@@ -2196,7 +2199,10 @@ document.addEventListener("DOMContentLoaded", () => {
         subText = sensorData.temp > 0 ? `${sensorData.temp.toFixed(1)}°C &bull; ${sensorData.hum.toFixed(1)} ${sensorData.hum > 120 ? "hPa" : "%"}` : "ESP-NOW 2.4GHz";
       }
 
-      if (dev.type === "sensor") subText += getNodePresenceHtml(isOnline && sensorData.isOnline);
+      if (dev.type === "sensor") {
+        subText += `<span style="display:block;">${isOnline && sensorData.isOnline ? 'Trực tuyến' : 'Ngoại tuyến'}</span>`;
+        subText += getNodePresenceHtml(isOnline && sensorData.isOnline);
+      }
 
       customCardsHtml += `
         <div class="hunonic-card" data-id="${dev.id}" title="Bấm vào để xem chi tiết">
@@ -2240,7 +2246,7 @@ document.addEventListener("DOMContentLoaded", () => {
         </div>
         <div class="hunonic-card-bottom">
           <h4 class="hunonic-card-title">${escapeHtml(foundHub ? foundHub.name : "IR trung tâm")}</h4>
-          <p class="hunonic-card-sub ${isIrOnline ? 'on' : ''}">Thiết bị con: ${irChildCount}</p>
+          <p class="hunonic-card-sub ${isIrOnline ? 'on' : ''}">${isIrOnline ? 'Trực tuyến' : 'Ngoại tuyến'} &bull; Thiết bị con: ${irChildCount}</p>
         </div>
       </div>
 
@@ -3194,6 +3200,9 @@ document.addEventListener("DOMContentLoaded", () => {
         sensorData.isOnline = false;
         sensorData.presence = null;
       }
+      renderDevices();
+    } else {
+      sensorData.isOnline = false;
       renderDevices();
     }
   }
