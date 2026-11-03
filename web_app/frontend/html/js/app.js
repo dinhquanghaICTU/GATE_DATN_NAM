@@ -1574,10 +1574,52 @@ document.addEventListener("DOMContentLoaded", () => {
     const occupied = known && (sensorData.presence === true || Number(sensorData.presence) === 1);
     const color = occupied ? "#059669" : "#64748b";
     const label = !online ? "Mất kết nối" : !known ? "Chờ dữ liệu hiện diện" : occupied ? "Có người trong phòng" : "Không có người";
+    if (!document.getElementById("presence-animation-styles")) {
+      const style = document.createElement("style");
+      style.id = "presence-animation-styles";
+      style.textContent = `
+      @keyframes presenceStride { from { transform:rotate(-26deg); } to { transform:rotate(26deg); } }
+      @keyframes presenceBob { from { transform:translateY(0); } to { transform:translateY(-3px); } }
+      @keyframes presenceRipple { 0% { transform:scale(.76);opacity:.55; } 100% { transform:scale(1.45);opacity:0; } }
+      @keyframes presenceShadow { from { transform:scaleX(1);opacity:.15; } to { transform:scaleX(.75);opacity:.08; } }
+      .presence-live-scene { position:relative;width:132px;height:132px;margin:0 auto 18px;display:grid;place-items:center;isolation:isolate; }
+      .presence-live-scene .radar-ring { position:absolute;inset:12px;border:1.5px solid #34d399;border-radius:50%;opacity:0;pointer-events:none; }
+      .presence-live-scene.is-active .radar-ring { animation:presenceRipple 2.4s linear infinite; }
+      .presence-live-scene.is-active .radar-ring:nth-child(2) { animation-delay:1.2s; }
+      .presence-person-disc { position:relative;width:100px;height:100px;border-radius:50%;display:grid;place-items:center;background:#f1f5f9; }
+      .is-active .presence-person-disc { background:linear-gradient(145deg,#d1fae5,#a7f3d0);box-shadow:0 8px 24px #05966918; }
+      .presence-live-scene svg { width:90px;height:90px;overflow:visible; }
+      .is-active .person-body { animation:presenceBob .55s ease-in-out infinite alternate; }
+      .is-active .person-limb { animation:presenceStride .65s ease-in-out infinite alternate; }
+      .person-arm { transform-origin:60px 47px; }
+      .person-leg { transform-origin:60px 72px; }
+      .is-active .person-opposite { animation-direction:alternate-reverse; }
+      .is-active .person-shadow { transform-origin:60px 106px;animation:presenceShadow .55s ease-in-out infinite alternate; }
+      @media (prefers-reduced-motion:reduce) { .presence-live-scene * { animation:none!important; } .presence-live-scene .radar-ring { opacity:.2; } }
+`;
+      document.head.appendChild(style);
+    }
+    // Preserve the animation across polling renders when the state is unchanged.
+    const viewKey = `${online}:${known}:${occupied}`;
+    if (panel.dataset.presenceView === viewKey) return;
+    panel.dataset.presenceView = viewKey;
     panel.innerHTML = `
       <section aria-live="polite" style="padding:28px 20px;margin-bottom:22px;border:1px solid #e2e8f0;border-radius:22px;background:linear-gradient(160deg,#f0fdf4,#fff);text-align:center;">
-        <div style="margin:0 auto 16px;width:88px;height:88px;border-radius:50%;background:${occupied ? '#d1fae5' : '#f1f5f9'};display:grid;place-items:center;color:${color};font-size:42px;">
-          <i class="fa-solid ${occupied ? 'fa-person-walking' : 'fa-person'}" aria-hidden="true"></i>
+        <div class="presence-live-scene ${occupied ? 'is-active' : ''}" aria-hidden="true">
+          <span class="radar-ring"></span><span class="radar-ring"></span>
+          <div class="presence-person-disc">
+            <svg viewBox="0 0 120 120" fill="none" style="color:${color};">
+              <ellipse class="person-shadow" cx="60" cy="106" rx="22" ry="4" fill="currentColor" opacity=".12"/>
+              <g class="person-body" stroke="currentColor" stroke-width="7" stroke-linecap="round" stroke-linejoin="round">
+                <g class="person-limb person-leg person-opposite" opacity=".45"><path d="M60 72 L51 87 L45 99"/></g>
+                <g class="person-limb person-arm person-opposite" opacity=".45"><path d="M60 47 L47 58 L43 69"/></g>
+                <circle cx="60" cy="28" r="8" fill="currentColor" stroke="none"/>
+                <path d="M60 44 L60 72" stroke-width="10"/>
+                <g class="person-limb person-arm"><path d="M60 47 L72 59 L79 61"/></g>
+                <g class="person-limb person-leg"><path d="M60 72 L70 86 L73 100"/></g>
+              </g>
+            </svg>
+          </div>
         </div>
         <div style="font-size:11px;letter-spacing:1.4px;color:#94a3b8;font-weight:700;margin-bottom:8px;">TRẠNG THÁI HIỆN DIỆN</div>
         <strong style="font-size:21px;color:${color};">${label}</strong>
