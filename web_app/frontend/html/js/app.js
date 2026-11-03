@@ -166,6 +166,10 @@ document.addEventListener("DOMContentLoaded", () => {
     customDevices = [];
   }
 
+  // Remove switch entries saved by earlier dashboard versions.
+  customDevices = customDevices.filter(d => d.type !== "relay" && d.type !== "socket");
+  localStorage.setItem("gate_custom_devices", JSON.stringify(customDevices));
+
   // ── MIGRATION: Đảm bảo trạm IR trung tâm là thiết bị cha chứa danh sách điều hòa (MIRAGE, FUNIKI)
   let foundHub = customDevices.find(d => d.type === "ir_hub" || d.id === "dev_ir_hub_hunonic");
   let acItems = customDevices.filter(d => d.type === "ac");
@@ -2066,8 +2070,6 @@ document.addEventListener("DOMContentLoaded", () => {
     } else if (type === "gateway") {
       const isIrOnline = isDeviceOnline(foundHub);
       const hasSensor = Boolean(sensorData.hasData || (sensorData.temp > 0));
-      const isR1On = isGatewayOnline && relayStates[1] === 1;
-      const isR2On = isGatewayOnline && relayStates[2] === 1;
       const irChildCount = (foundHub && foundHub.children && foundHub.children.length) || 2;
 
       grid.innerHTML = `
@@ -2099,33 +2101,6 @@ document.addEventListener("DOMContentLoaded", () => {
           </div>
         </div>
 
-        <!-- 3. Công Tắc Relay 1 -->
-        <div class="hunonic-card subview-gw-child" data-gw-action="toggle_relay_1" title="Bấm để bật/tắt Relay Kênh 1">
-          <div class="hunonic-card-top">
-            <div class="hunonic-hex-icon">
-              ${getRelayHexSvg(isR1On)}
-            </div>
-            ${getWifiHunonicSvg(isGatewayOnline)}
-          </div>
-          <div class="hunonic-card-bottom">
-            <h4 class="hunonic-card-title">Công Tắc Relay Kênh 1</h4>
-            <p class="hunonic-card-sub ${isR1On ? 'on' : ''}">${isR1On ? 'Đang bật' : 'Đang tắt'}</p>
-          </div>
-        </div>
-
-        <!-- 4. Công Tắc Relay 2 -->
-        <div class="hunonic-card subview-gw-child" data-gw-action="toggle_relay_2" title="Bấm để bật/tắt Relay Kênh 2">
-          <div class="hunonic-card-top">
-            <div class="hunonic-hex-icon">
-              ${getRelayHexSvg(isR2On)}
-            </div>
-            ${getWifiHunonicSvg(isGatewayOnline)}
-          </div>
-          <div class="hunonic-card-bottom">
-            <h4 class="hunonic-card-title">Công Tắc Relay Kênh 2</h4>
-            <p class="hunonic-card-sub ${isR2On ? 'on' : ''}">${isR2On ? 'Đang bật' : 'Đang tắt'}</p>
-          </div>
-        </div>
       `;
     }
   }
@@ -2196,11 +2171,9 @@ document.addEventListener("DOMContentLoaded", () => {
       });
     }
 
-    if (relayStates[1] === 1) onCount++; else offCount++;
-    if (relayStates[2] === 1) onCount++; else offCount++;
 
     const irChildCount = (foundHub && foundHub.children && foundHub.children.length) || 2;
-    const gwChildCount = irChildCount + 3; // IR hub, Sensor C3, Relay 1, Relay 2
+    const gwChildCount = (foundHub ? 1 : 0) + (sensorData.hasData ? 1 : 0);
 
     // Tạo HTML cho các thiết bị riêng lẻ khác nếu người dùng thêm vào
     let customCardsHtml = "";
@@ -2826,28 +2799,10 @@ document.addEventListener("DOMContentLoaded", () => {
         });
       }
 
-      // 3. Relay Kênh 1 & 2 Gateway
-      if (isGatewayOnline) {
-        discList.push({
-          id: "dev_gw_relay_1",
-          name: "Công Tắc Relay Kênh 1",
-          type: "relay",
-          source: "Ngõ Ra Gateway (GPIO10)",
-          online: true,
-          details: "Chân GPIO 10 • Tải đèn/quạt 220V (10A)",
-          state: relayStates[1] || 0
-        });
-        discList.push({
-          id: "dev_gw_relay_2",
-          name: "Công Tắc Relay Kênh 2",
-          type: "relay",
-          source: "Ngõ Ra Gateway (GPIO11)",
-          online: true,
-          details: "Chân GPIO 11 • Tải phụ tải 220V (10A)",
-          state: relayStates[2] || 0
-        });
-      }
+
     }
+
+    discList = discList.filter(d => d.type !== "relay" && d.type !== "socket");
 
     if (discList.length === 0) {
       grid.innerHTML = `
