@@ -2472,6 +2472,61 @@ document.addEventListener("DOMContentLoaded", () => {
   // ── XỬ LÝ EVENT DELEGATION TRÊN SUB-VIEW DEVICES GRID ───────────────────────
   const subviewDevicesGridEl = document.getElementById("subview-devices-grid");
   if (subviewDevicesGridEl) {
+    let subHoldTimer = null;
+    let subHeld = false;
+    let subPointer = null;
+    let subStartX = 0, subStartY = 0;
+    const cancelSubHold = () => {
+      clearTimeout(subHoldTimer);
+      subHoldTimer = null;
+      subPointer = null;
+    };
+    const openSubviewSettings = card => {
+      if (card.getAttribute("data-gw-action") === "open_ir_hub") {
+        if (foundHub) openChildDeviceDrawer(foundHub.id);
+      } else {
+        const sensor = customDevices.find(d => d.type === "sensor");
+        const id = card.getAttribute("data-id") || (sensor && sensor.id);
+        if (id) openChildDeviceDrawer(id);
+      }
+    };
+    subviewDevicesGridEl.addEventListener("pointerdown", e => {
+      cancelSubHold();
+      subHeld = false;
+      if (!e.isPrimary || e.button !== 0) return;
+      const card = e.target.closest(".subview-gw-child");
+      if (!card) return;
+      subPointer = e.pointerId;
+      subStartX = e.clientX;
+      subStartY = e.clientY;
+      subHoldTimer = setTimeout(() => {
+        subHeld = true;
+        cancelSubHold();
+        if (navigator.vibrate) navigator.vibrate(30);
+        openSubviewSettings(card);
+      }, 500);
+    });
+    subviewDevicesGridEl.addEventListener("pointermove", e => {
+      if (subPointer === e.pointerId && (Math.abs(e.clientX - subStartX) > 10 ||
+          Math.abs(e.clientY - subStartY) > 10)) cancelSubHold();
+    });
+    window.addEventListener("pointerup", cancelSubHold);
+    window.addEventListener("pointercancel", cancelSubHold);
+    window.addEventListener("blur", cancelSubHold);
+    subviewDevicesGridEl.addEventListener("contextmenu", e => {
+      const card = e.target.closest(".subview-gw-child");
+      if (!card) return;
+      e.preventDefault();
+      cancelSubHold();
+      if (!subHeld) openSubviewSettings(card);
+      subHeld = true;
+    });
+    subviewDevicesGridEl.addEventListener("click", e => {
+      if (!subHeld) return;
+      subHeld = false;
+      e.preventDefault();
+      e.stopImmediatePropagation();
+    }, true);
     subviewDevicesGridEl.addEventListener("click", async (e) => {
       // 1. Click vào AC card trong IR Hub Subview -> Mở Điều khiển Điều Hòa!
       const acCard = e.target.closest(".subview-ac-card");
