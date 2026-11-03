@@ -174,28 +174,7 @@ document.addEventListener("DOMContentLoaded", () => {
   let foundHub = customDevices.find(d => d.type === "ir_hub" || d.id === "dev_ir_hub_hunonic");
   let acItems = customDevices.filter(d => d.type === "ac");
 
-  const defaultHunonicChildren = [
-    {
-      id: "4003248",
-      name: "Điều hòa MIRAGE",
-      type: "ac",
-      brand: 117,
-      temp: 25,
-      mode: 1,
-      fan: 0,
-      power: 0
-    },
-    {
-      id: "4003318",
-      name: "Điều hòa FUNIKI",
-      type: "ac",
-      brand: 104,
-      temp: 26,
-      mode: 1,
-      fan: 0,
-      power: 0
-    }
-  ];
+  const defaultHunonicChildren = [];
 
   if (!foundHub) {
     foundHub = {
@@ -217,19 +196,8 @@ document.addEventListener("DOMContentLoaded", () => {
     if (!foundHub.name || foundHub.name === "IR Hunonic Smart Pro") {
       foundHub.name = "IR trung tâm";
     }
-    // Đảm bảo có cả hai điều hòa thực tế MIRAGE và FUNIKI
-    if (!foundHub.children || foundHub.children.length === 0 || foundHub.children.some(c => c.id === "4000261")) {
-      foundHub.children = defaultHunonicChildren;
-    } else {
-      // Đảm bảo 4003248 và 4003318 có tên hiển thị đẹp
-      const mirage = foundHub.children.find(c => c.id === "4003248");
-      if (mirage && (!mirage.name || mirage.name.includes("4003248"))) mirage.name = "Điều hòa MIRAGE";
-      const funiki = foundHub.children.find(c => c.id === "4003318");
-      if (funiki && (!funiki.name || funiki.name.includes("4003318"))) funiki.name = "Điều hòa FUNIKI";
-      if (!mirage && !funiki) {
-        foundHub.children = defaultHunonicChildren;
-      }
-    }
+    // Rebuild children from MQTT/API, never keep demo or cached AC state.
+    foundHub.children = [];
     customDevices = customDevices.filter(d => d.type !== "ac");
     localStorage.setItem("gate_custom_devices", JSON.stringify(customDevices));
   }
@@ -2073,7 +2041,7 @@ document.addEventListener("DOMContentLoaded", () => {
     } else if (type === "gateway") {
       const isIrOnline = isDeviceOnline(foundHub);
       const hasSensor = Boolean(sensorData.hasData || (sensorData.temp > 0));
-      const irChildCount = (foundHub && foundHub.children && foundHub.children.length) || 2;
+      const irChildCount = (foundHub && foundHub.children && foundHub.children.length) || 0;
 
       grid.innerHTML = `
         <!-- 1. IR Trung Tâm -->
@@ -2175,7 +2143,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
 
-    const irChildCount = (foundHub && foundHub.children && foundHub.children.length) || 2;
+    const irChildCount = (foundHub && foundHub.children && foundHub.children.length) || 0;
     const gwChildCount = (foundHub ? 1 : 0) + (sensorData.hasData ? 1 : 0);
 
     // Tạo HTML cho các thiết bị riêng lẻ khác nếu người dùng thêm vào
@@ -3113,21 +3081,12 @@ document.addEventListener("DOMContentLoaded", () => {
       }
 
       if (d.ac_devices && typeof d.ac_devices === "object") {
-        const hubDev = foundHub || customDevices.find(cd => cd.type === "ir_hub" || cd.id === "dev_ir_hub_hunonic");
-        if (hubDev && hubDev.children) {
-          hubDev.children.forEach(ch => {
-            const remoteAc = d.ac_devices[ch.id];
-            if (remoteAc) {
-              if (remoteAc.name) ch.name = remoteAc.name;
-              if (remoteAc.power !== undefined) ch.power = remoteAc.power;
-              ch.state = ch.power;
-              if (remoteAc.temp > 0) ch.temp = remoteAc.temp;
-              if (remoteAc.mode !== undefined) ch.mode = remoteAc.mode;
-              if (remoteAc.fan !== undefined) ch.fan = remoteAc.fan;
-              if (remoteAc.brand) ch.brand = remoteAc.brand;
-              if (remoteAc.online !== undefined) ch.online = Boolean(remoteAc.online);
-            }
-          });
+        const hubDev = foundHub || customDevices.find(cd => cd.type === "ir_hub");
+        if (hubDev) {
+          hubDev.children = Object.entries(d.ac_devices).map(([id, ac]) => ({
+            ...ac, id: String(id), type: "ac", name: ac.name || `Điều hòa ${id}`,
+            state: ac.power ?? 0, online: Boolean(isGatewayOnline && d.ac_online)
+          }));
         }
       }
 

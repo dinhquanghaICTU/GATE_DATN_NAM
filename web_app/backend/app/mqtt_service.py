@@ -20,38 +20,19 @@ latest_gateway_status = {
     "uptime_sec": 0,
     "free_heap": 0,
     "rssi": -100,
-    "relay1": 0,
-    "relay2": 0,
-    "ac_id": "4003248",
-    "ac_name": "Điều hòa MIRAGE",
-    "ac_brand": 117,
+    "ac_id": "",
+    "ac_name": "",
+    "ac_brand": 0,
     "ac_power": 0,
     "ac_temp": 25,
     "ac_mode": 1,
     "ac_fan": 0,
-    "ac_devices": {
-        "4003248": {
-            "id": "4003248",
-            "name": "Điều hòa MIRAGE",
-            "brand": 117,
-            "power": 0,
-            "temp": 25,
-            "mode": 1,
-            "fan": 0,
-            "online": True
-        },
-        "4003318": {
-            "id": "4003318",
-            "name": "Điều hòa FUNIKI",
-            "brand": 104,
-            "power": 0,
-            "temp": 25,
-            "mode": 1,
-            "fan": 0,
-            "online": True
-        }
-    },
+    "ac_devices": {},
     "ws_connected": 0,
+    "ir_online": 0,
+    "ac_online": False,
+    "ac_offline_reason": "Chưa nhận được dữ liệu từ Gateway",
+    "ac_hub_state": "2",
     "total_node_pkts": 0,
     "fw_ver": "1.0.0"
 }
@@ -65,6 +46,7 @@ latest_sensor_data = {
     "rssi": -100,
     "last_seen": None
 }
+
 
 mqtt_client: mqtt.Client = None
 
@@ -103,6 +85,7 @@ def on_message(client, userdata, msg):
                 if ac_count == 0:
                     ac_id_val = ""
                     ac_name_val = ""
+                    latest_gateway_status["ac_devices"] = {}
 
                 latest_gateway_status.update({
                     "online": True,
@@ -110,20 +93,44 @@ def on_message(client, userdata, msg):
                     "uptime_sec": data.get("uptime_sec", 0),
                     "free_heap": data.get("free_heap", 0),
                     "rssi": data.get("rssi", -100),
-                    "relay1": data.get("relay1", 0),
-                    "relay2": data.get("relay2", 0),
                     "ac_count": latest_gateway_status.get("ac_count", 0),
                     "ac_id": ac_id_val if ac_count is not None else data.get("ac_id", latest_gateway_status["ac_id"]),
                     "ac_name": ac_name_val if ac_count is not None else data.get("ac_name", latest_gateway_status["ac_name"]),
                     "ac_power": data.get("ac_power", 0),
-                    "ac_temp": data.get("ac_temp", 32),
+                    "ac_temp": data.get("ac_temp", 25),
                     "ac_mode": data.get("ac_mode", latest_gateway_status["ac_mode"]),
                     "ac_fan": data.get("ac_fan", latest_gateway_status["ac_fan"]),
                     "ac_brand": data.get("ac_brand", latest_gateway_status["ac_brand"]),
                     "ws_connected": data.get("ws_connected", 0),
+                    "ir_online": data.get("ir_online", 0),
                     "total_node_pkts": data.get("total_node_pkts", 0),
                     "fw_ver": data.get("fw_ver", "1.0.0")
                 })
+
+                # A heartbeat also refreshes the first real AC, even if device_list
+                # was published before this backend subscribed.
+                if ac_id_val and ac_count != 0:
+                    devices = latest_gateway_status.setdefault("ac_devices", {})
+                    entry = devices.setdefault(ac_id_val, {"id": ac_id_val})
+                    for field, source in (("name", "ac_name"), ("brand", "ac_brand"),
+                                          ("power", "ac_power"), ("temp", "ac_temp"),
+                                          ("mode", "ac_mode"), ("fan", "ac_fan")):
+                        if source in data:
+                            entry[field] = data[source]
+
+                ir_online_bool = bool(data.get("ir_online", 0))
+                latest_gateway_status["ac_online"] = ir_online_bool
+                latest_gateway_status["ac_offline_reason"] = (
+                    "Trực tuyến (Online)" if ir_online_bool 
+                    else "Trạm phát hồng ngoại IR Hub chưa cắm nguồn (Ngoại tuyến)"
+                )
+                latest_gateway_status["ac_hub_state"] = "1" if ir_online_bool else "2"
+                
+                if "ac_devices" in latest_gateway_status and isinstance(latest_gateway_status["ac_devices"], dict):
+                    for did, dinfo in latest_gateway_status["ac_devices"].items():
+                        dinfo["online"] = ir_online_bool
+                        if not ir_online_bool:
+                            dinfo["power"] = 0
                 # Lưu log định kỳ vào DB
                 try:
                     with Session(engine) as session:
@@ -161,23 +168,29 @@ def on_message(client, userdata, msg):
                             new_devices[did] = {
                                 "id": did,
                                 "name": d.get("name") or f"Điều hòa {did}",
-                                "brand": d.get("brand", 117),
+                                "brand": d.get("brand", 0),
                                 "power": d.get("power", 0),
                                 "temp": d.get("temp", 25),
                                 "mode": d.get("mode", 1),
                                 "fan": d.get("fan", 0),
-                                "online": True
+                                "online": bool(latest_gateway_status.get("ac_online", False))
                             }
-                    if new_devices:
-                        latest_gateway_status["ac_devices"] = new_devices
-                        latest_gateway_status["ac_count"] = len(new_devices)
+                    latest_gateway_status["ac_devices"] = new_devices
+                    latest_gateway_status["ac_count"] = len(new_devices)
+                    if len(new_devices) == 0:
+                        latest_gateway_status["ac_id"] = ""
+                        latest_gateway_status["ac_name"] = ""
+                elif ac_count == 0:
+                    latest_gateway_status["ac_devices"] = {}
+                    latest_gateway_status["ac_id"] = ""
+                    latest_gateway_status["ac_name"] = ""
 
                 if ac_count > 0 and "ac" in data:
                     ac = data["ac"]
                     aid = str(ac.get("id", ""))
                     latest_gateway_status["ac_id"] = aid
                     latest_gateway_status["ac_name"] = ac.get("name", "")
-                    latest_gateway_status["ac_brand"] = ac.get("brand", 117)
+                    latest_gateway_status["ac_brand"] = ac.get("brand", 0)
                     latest_gateway_status["ac_power"] = ac.get("power", 0)
                     latest_gateway_status["ac_temp"] = ac.get("temp", 25)
                     latest_gateway_status["ac_mode"] = ac.get("mode", 2)
@@ -188,7 +201,7 @@ def on_message(client, userdata, msg):
                         latest_gateway_status["ac_devices"][aid] = {
                             "id": aid,
                             "name": ac.get("name", f"Điều hòa {aid}"),
-                            "brand": ac.get("brand", 117),
+                            "brand": ac.get("brand", 0),
                             "power": ac.get("power", 0),
                             "temp": ac.get("temp", 25),
                             "mode": ac.get("mode", 2),
@@ -206,13 +219,14 @@ def on_message(client, userdata, msg):
                     dev_entry = latest_gateway_status["ac_devices"].get(aid, {
                         "id": aid,
                         "name": data.get("name", f"Điều hòa {aid}"),
-                        "brand": data.get("brand", 117),
+                        "brand": data.get("brand", 0),
                         "power": 0,
                         "temp": 25,
                         "mode": 2,
                         "fan": 0,
                         "online": True
                     })
+                    if "brand" in data and data["brand"]: dev_entry["brand"] = data["brand"]
                     if "name" in data and data["name"]: dev_entry["name"] = data["name"]
                     if "power" in data: dev_entry["power"] = data["power"]
                     if "temp" in data and data["temp"] > 0: dev_entry["temp"] = data["temp"]
@@ -231,12 +245,6 @@ def on_message(client, userdata, msg):
                     latest_gateway_status["ac_fan"] = dev_entry["fan"]
                     latest_gateway_status["ac_brand"] = dev_entry["brand"]
 
-            elif evt == "relay_state":
-                ch = data.get("ch", 1)
-                st = data.get("state", 0)
-                if ch == 1: latest_gateway_status["relay1"] = st
-                elif ch == 2: latest_gateway_status["relay2"] = st
-
         # 2. Nhận dữ liệu cảm biến Node ESP-NOW
         elif topic == settings.TOPIC_GATE_TELEMETRY or "node_id" in data:
             latest_sensor_data.update({
@@ -248,6 +256,7 @@ def on_message(client, userdata, msg):
                 "rssi": data.get("rssi", -100),
                 "last_seen": now.isoformat()
             })
+
             try:
                 with Session(engine) as session:
                     rec = SensorRecord(
