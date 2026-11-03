@@ -2330,17 +2330,23 @@ document.addEventListener("DOMContentLoaded", () => {
       if (iconBox) {
         iconBox.innerHTML = `<i class="fa-solid fa-wifi ${isHubOnline ? 'text-green' : 'text-gray'}"></i>`;
       }
-      if (actionText) actionText.innerText = "Tạo Custom AC";
       if (actionBtn) {
+        actionBtn.innerHTML = `<i class="fa-solid fa-arrows-rotate" id="subview-action-icon"></i> <span id="subview-action-text">Đồng bộ</span>`;
         actionBtn.onclick = () => {
+          const icon = actionBtn.querySelector("i");
+          if (icon) icon.classList.add("fa-spin");
           showToast("Đang đồng bộ thiết bị IR từ Cloud...", "info");
           callApi("/api/hvac/sync", "POST").then(res => {
+            if (icon) icon.classList.remove("fa-spin");
             if (res && res.success && res.data && Array.isArray(res.data.children)) {
               hubDev.children = res.data.children;
               localStorage.setItem("gate_custom_devices", JSON.stringify(customDevices));
               renderSubViewDevices("ir_hub", hubDev);
               showToast(`Đã đồng bộ ${res.data.children.length} thiết bị!`, "success");
             }
+          }).catch(err => {
+            if (icon) icon.classList.remove("fa-spin");
+            showToast("Lỗi đồng bộ thiết bị IR!", "error");
           });
         };
       }
@@ -2356,8 +2362,8 @@ document.addEventListener("DOMContentLoaded", () => {
       if (iconBox) {
         iconBox.innerHTML = `<i class="fa-solid fa-wifi ${isGatewayOnline ? 'text-green' : 'text-gray'}"></i>`;
       }
-      if (actionText) actionText.innerText = "Thêm thiết bị";
       if (actionBtn) {
+        actionBtn.innerHTML = `<i class="fa-solid fa-plus"></i> <span id="subview-action-text">Thêm thiết bị</span>`;
         actionBtn.onclick = () => {
           openGatewayDrawer(true);
         };
@@ -2411,7 +2417,7 @@ document.addEventListener("DOMContentLoaded", () => {
               </p>
               <div style="display: flex; gap: 12px; justify-content: center; flex-wrap: wrap;">
                 <button type="button" onclick="document.getElementById('btn-subview-action')?.click()" style="display: inline-flex; align-items: center; gap: 8px; background: linear-gradient(135deg, #00b06f, #059669); color: #ffffff; border: none; padding: 11px 22px; border-radius: 12px; font-size: 14px; font-weight: 600; cursor: pointer; box-shadow: 0 4px 14px rgba(0, 176, 111, 0.35); transition: transform 0.15s ease;">
-                  <i class="fa-solid fa-plus-circle"></i> Tạo Custom AC Ngay
+                  <i class="fa-solid fa-arrows-rotate"></i> Đồng bộ ngay
                 </button>
               </div>
             </div>
