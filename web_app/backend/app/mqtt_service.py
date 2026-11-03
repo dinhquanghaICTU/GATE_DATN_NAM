@@ -61,6 +61,7 @@ latest_sensor_data = {
     "val1": 0.0,
     "val2": 0.0,
     "battery": 0.0,
+    "presence": None,
     "rssi": -100,
     "last_seen": None
 }
@@ -243,6 +244,7 @@ def on_message(client, userdata, msg):
                 "val1": data.get("val1", 0.0),
                 "val2": data.get("val2", 0.0),
                 "battery": data.get("battery", 0.0),
+                "presence": data.get("presence"),
                 "rssi": data.get("rssi", -100),
                 "last_seen": now.isoformat()
             })

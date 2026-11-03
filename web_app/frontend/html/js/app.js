@@ -142,6 +142,8 @@ document.addEventListener("DOMContentLoaded", () => {
     temp: 0,
     hum: 0,
     batt: 0,
+    presence: null,
+    isOnline: false,
     hasData: false
   };
 
@@ -2093,7 +2095,7 @@ document.addEventListener("DOMContentLoaded", () => {
           </div>
           <div class="hunonic-card-bottom">
             <h4 class="hunonic-card-title">Node Cảm Biến C3</h4>
-            <p class="hunonic-card-sub ${hasSensor ? 'on' : ''}">${sensorData.temp > 0 ? `${sensorData.temp.toFixed(1)}°C &bull; ${sensorData.hum.toFixed(1)}%` : 'ESP-NOW 2.4GHz'}</p>
+            <p class="hunonic-card-sub ${hasSensor ? 'on' : ''}">${sensorData.temp > 0 ? `${sensorData.temp.toFixed(1)}°C &bull; ${sensorData.hum.toFixed(1)} ${sensorData.hum > 120 ? "hPa" : "%"}` : 'ESP-NOW 2.4GHz'}${getNodePresenceHtml(sensorData.isOnline)}</p>
           </div>
         </div>
 
@@ -2129,6 +2131,14 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   // ── RENDER THIẾT BỊ TRÊN DASHBOARD CHÍNH (CHUẨN HUNONIC COMPACT CARD) ──────
+  function getNodePresenceHtml(isOnline) {
+    if (!isOnline || !sensorData.hasData) return "";
+    const known = [true, false, 0, 1, "0", "1"].includes(sensorData.presence);
+    const occupied = sensorData.presence === true || Number(sensorData.presence) === 1;
+    const label = known ? (occupied ? 'Có người' : 'Không có người') : 'Chưa có dữ liệu hiện diện';
+    return `<span style="display:block;margin-top:4px;color:${known && occupied ? '#059669' : '#64748b'};font-weight:600;"><i class="fa-solid ${known && occupied ? 'fa-person-walking' : 'fa-house-user'}"></i> ${label}</span>`;
+  }
+
   function renderDevices() {
     if (currentHubView) {
       renderSubViewDevices(currentHubView.type, currentHubView.dev);
@@ -2210,8 +2220,10 @@ document.addEventListener("DOMContentLoaded", () => {
         subText = isOn ? "Đang bật" : "Đang tắt";
       } else if (dev.type === "sensor") {
         iconSvg = getSensorHexSvg();
-        subText = sensorData.temp > 0 ? `${sensorData.temp.toFixed(1)}°C &bull; ${sensorData.hum.toFixed(1)}%` : "ESP-NOW 2.4GHz";
+        subText = sensorData.temp > 0 ? `${sensorData.temp.toFixed(1)}°C &bull; ${sensorData.hum.toFixed(1)} ${sensorData.hum > 120 ? "hPa" : "%"}` : "ESP-NOW 2.4GHz";
       }
+
+      if (dev.type === "sensor") subText += getNodePresenceHtml(isOnline && sensorData.isOnline);
 
       customCardsHtml += `
         <div class="hunonic-card" data-id="${dev.id}" title="Bấm vào để xem chi tiết">
@@ -2810,7 +2822,7 @@ document.addEventListener("DOMContentLoaded", () => {
           source: "ESP-NOW 2.4GHz",
           mac: "30:AE:A4:07:0B:84",
           online: true,
-          details: `Nhiệt độ: ${sensorData.temp.toFixed(1)}°C • Độ ẩm: ${sensorData.hum.toFixed(1)}% • Pin: ${sensorData.batt.toFixed(2)}V`
+          details: `Nhiệt độ: ${sensorData.temp.toFixed(1)}°C • ${sensorData.hum > 120 ? "Áp suất" : "Độ ẩm"}: ${sensorData.hum.toFixed(1)} ${sensorData.hum > 120 ? "hPa" : "%"} • Pin: ${sensorData.batt.toFixed(2)}V`
         });
       }
 
@@ -3210,15 +3222,24 @@ document.addEventListener("DOMContentLoaded", () => {
     const senRes = await callApi("/api/sensors/latest");
     if (senRes && senRes.success && senRes.data) {
       const s = senRes.data;
-      if (s.last_seen || s.val1 > 0 || s.val2 > 0) {
+      if (s.last_seen) {
         sensorData.hasData = true;
-        sensorData.temp = s.val1 || 27.2;
-        sensorData.hum = s.val2 || 72.0;
-        sensorData.batt = s.battery || 3.3;
+        sensorData.temp = s.val1 ?? 0;
+        sensorData.hum = s.val2 ?? 0;
+        sensorData.batt = s.battery ?? 0;
+        sensorData.presence = s.presence ?? null;
+        sensorData.isOnline = s.is_online === true;
 
         if (weatherTempDisplay) weatherTempDisplay.innerHTML = `${Math.round(Number(sensorData.temp))}<span class="deg-unit">°C</span>`;
-        if (weatherHumDisplay) weatherHumDisplay.innerText = `Độ ẩm ${Math.round(Number(sensorData.hum))}%`;
+        if (weatherHumDisplay) weatherHumDisplay.innerText = sensorData.hum > 120
+          ? `Áp suất ${Math.round(Number(sensorData.hum))} hPa`
+          : `Độ ẩm ${Math.round(Number(sensorData.hum))}%`;
+      } else {
+        sensorData.hasData = false;
+        sensorData.isOnline = false;
+        sensorData.presence = null;
       }
+      renderDevices();
     }
   }
 
