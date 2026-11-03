@@ -2008,12 +2008,13 @@ document.addEventListener("DOMContentLoaded", () => {
     if (!grid) return;
 
     if (type === "ir_hub") {
-      const dev = hubDev || foundHub;
+      const dev = customDevices.find(d => hubDev && d.id === hubDev.id) || foundHub;
       const isHubOnline = isDeviceOnline(dev);
-      const children = (dev && dev.children && dev.children.length > 0) ? dev.children : [
-        { id: "4003248", name: "Điều hòa MIRAGE", type: "ac", temp: 25, mode: 1, fan: 0, power: 0, brand: 117 },
-        { id: "4003318", name: "Điều hòa FUNIKI", type: "ac", temp: 26, mode: 1, fan: 0, power: 0, brand: 104 }
-      ];
+      const headerIcon = document.getElementById("subview-header-icon-box");
+      if (headerIcon) headerIcon.innerHTML = `<i class="fa-solid fa-wifi ${isHubOnline ? 'text-green' : 'text-gray'}"></i>`;
+      const hubAction = document.getElementById("btn-subview-action");
+      if (hubAction) hubAction.disabled = !isHubOnline;
+      const children = (dev && Array.isArray(dev.children)) ? dev.children : [];
 
       let html = "";
       children.forEach((child) => {
@@ -2023,7 +2024,7 @@ document.addEventListener("DOMContentLoaded", () => {
         const subClass = isChildOn ? "on" : "";
 
         html += `
-          <div class="hunonic-card subview-ac-card" onclick="window.handleAcCardClick('${child.id}')" data-child-id="${child.id}" data-hub-id="${dev.id || 'dev_ir_hub_hunonic'}" title="Bấm vào để mở điều khiển điều hòa">
+          <div class="hunonic-card subview-ac-card ${isHubOnline ? '' : 'is-offline'}" style="${isHubOnline ? '' : 'opacity:0.65;filter:grayscale(1);cursor:default;'}" onclick="${isHubOnline ? `window.handleAcCardClick('${child.id}')` : 'return false'}" aria-disabled="${!isHubOnline}" data-child-id="${child.id}" data-hub-id="${dev.id || 'dev_ir_hub_hunonic'}" title="Bấm vào để mở điều khiển điều hòa">
             <div class="hunonic-card-top" style="pointer-events: none;">
               <div class="ac-indoor-svg">
                 ${getAcUnitSvg(isHubOnline, isChildOn)}
@@ -2032,7 +2033,7 @@ document.addEventListener("DOMContentLoaded", () => {
             </div>
             <div class="hunonic-card-bottom" style="pointer-events: none;">
               <h4 class="hunonic-card-title">${escapeHtml(child.name)}</h4>
-              <p class="hunonic-card-sub ${subClass}">${statusText}</p>
+              <p class="hunonic-card-sub ${subClass}" style="${isHubOnline ? '' : 'color:#94a3b8;'}">${statusText}</p>
             </div>
           </div>
         `;
@@ -2173,7 +2174,7 @@ document.addEventListener("DOMContentLoaded", () => {
       }
 
       customCardsHtml += `
-        <div class="hunonic-card" data-id="${dev.id}" title="Bấm vào để xem chi tiết">
+        <div class="hunonic-card" style="${isOnline ? '' : 'opacity:0.65;filter:grayscale(1);'}" data-id="${dev.id}" title="Bấm vào để xem chi tiết">
           <div class="hunonic-card-top">
             <div class="hunonic-hex-icon">
               ${iconSvg}
@@ -2191,7 +2192,7 @@ document.addEventListener("DOMContentLoaded", () => {
     // RENDER LƯỚI THIẾT BỊ HAY DÙNG CHUẨN HUNONIC (GIỐNG SCREENSHOT 1)
     devicesGrid.innerHTML = `
       <!-- CARD 1: TRẠM GATEWAY ESP32-S3 -->
-      <div class="hunonic-card" id="card-gateway-master" title="Bấm vào để xem các thiết bị trong Gateway">
+      <div class="hunonic-card" style="${isGatewayOnline ? '' : 'opacity:0.65;filter:grayscale(1);'}" id="card-gateway-master" title="Bấm vào để xem các thiết bị trong Gateway">
         <div class="hunonic-card-top">
           <div class="hunonic-hex-icon">
             ${getGatewayHexSvg()}
@@ -2205,7 +2206,7 @@ document.addEventListener("DOMContentLoaded", () => {
       </div>
 
       <!-- CARD 2: IR TRUNG TÂM (CHỨA CÁC ĐIỀU HÒA) -->
-      <div class="hunonic-card" id="card-ir-hub-master" data-id="${foundHub ? foundHub.id : 'dev_ir_hub_hunonic'}" title="Bấm vào để mở các thiết bị trong IR">
+      <div class="hunonic-card" style="${isIrOnline ? '' : 'opacity:0.65;filter:grayscale(1);'}" id="card-ir-hub-master" data-id="${foundHub ? foundHub.id : 'dev_ir_hub_hunonic'}" title="Bấm vào để mở các thiết bị trong IR">
         <div class="hunonic-card-top">
           <div class="hunonic-hex-icon">
             ${getIrHubHexSvg()}
