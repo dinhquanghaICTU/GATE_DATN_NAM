@@ -62,7 +62,11 @@ def on_disconnect(client, userdata, *args, **kwargs):
 
 from datetime import datetime, timezone
 
+# None until a complete inventory or a zero/single-device heartbeat arrives.
+_ac_inventory_ids = None
+
 def on_message(client, userdata, msg):
+    global _ac_inventory_ids
     try:
         topic = msg.topic
         payload_str = msg.payload.decode("utf-8")
@@ -86,6 +90,18 @@ def on_message(client, userdata, msg):
                     ac_id_val = ""
                     ac_name_val = ""
                     latest_gateway_status["ac_devices"] = {}
+
+                if ac_count == 0:
+                    _ac_inventory_ids = set()
+                elif ac_count == 1 and ac_id_val:
+                    _ac_inventory_ids = {str(ac_id_val)}
+                    previous_devices = latest_gateway_status.get("ac_devices", {})
+                    latest_gateway_status["ac_devices"] = {
+                        key: value for key, value in previous_devices.items()
+                        if key in _ac_inventory_ids
+                    }
+                elif ac_count is not None and _ac_inventory_ids is not None and ac_count != len(_ac_inventory_ids):
+                    _ac_inventory_ids = None
 
                 latest_gateway_status.update({
                     "online": True,
@@ -121,11 +137,11 @@ def on_message(client, userdata, msg):
                 ir_online_bool = bool(data.get("ir_online", 0))
                 latest_gateway_status["ac_online"] = ir_online_bool
                 latest_gateway_status["ac_offline_reason"] = (
-                    "Trực tuyến (Online)" if ir_online_bool 
+                    "Trực tuyến (Online)" if ir_online_bool
                     else "Trạm phát hồng ngoại IR Hub chưa cắm nguồn (Ngoại tuyến)"
                 )
                 latest_gateway_status["ac_hub_state"] = "1" if ir_online_bool else "2"
-                
+
                 if "ac_devices" in latest_gateway_status and isinstance(latest_gateway_status["ac_devices"], dict):
                     for did, dinfo in latest_gateway_status["ac_devices"].items():
                         dinfo["online"] = ir_online_bool
@@ -158,7 +174,7 @@ def on_message(client, userdata, msg):
             elif evt == "device_list":
                 ac_count = data.get("ac_count", 0)
                 latest_gateway_status["ac_count"] = ac_count
-                
+
                 # Cập nhật danh sách nhiều thiết bị nếu Gateway gửi mảng devices
                 if "devices" in data and isinstance(data["devices"], list):
                     new_devices = {}
@@ -175,12 +191,14 @@ def on_message(client, userdata, msg):
                                 "fan": d.get("fan", 0),
                                 "online": bool(latest_gateway_status.get("ac_online", False))
                             }
+                    _ac_inventory_ids = set(new_devices)
                     latest_gateway_status["ac_devices"] = new_devices
                     latest_gateway_status["ac_count"] = len(new_devices)
                     if len(new_devices) == 0:
                         latest_gateway_status["ac_id"] = ""
                         latest_gateway_status["ac_name"] = ""
                 elif ac_count == 0:
+                    _ac_inventory_ids = set()
                     latest_gateway_status["ac_devices"] = {}
                     latest_gateway_status["ac_id"] = ""
                     latest_gateway_status["ac_name"] = ""
@@ -210,6 +228,10 @@ def on_message(client, userdata, msg):
                         }
 
             elif evt == "ac_state":
+                incoming_id = str(data.get("id", ""))
+                if _ac_inventory_ids is not None and incoming_id not in _ac_inventory_ids:
+                    logger.warning("Ignoring AC state for ID outside current inventory: %s", incoming_id)
+                    return
                 latest_gateway_status["online"] = True
                 latest_gateway_status["last_seen"] = now.isoformat()
                 aid = str(data.get("id", ""))
