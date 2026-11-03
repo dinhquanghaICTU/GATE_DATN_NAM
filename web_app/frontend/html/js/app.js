@@ -1913,6 +1913,9 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function getWifiHunonicSvg(isOnline) {
+    if (!isOnline) {
+      return `<span aria-label="Thiết bị mất kết nối" style="display:inline-flex;align-items:center;gap:4px;white-space:nowrap;padding:4px 6px;border-radius:999px;background:#fff7ed;border:1px solid #ffedd5;color:#b45309;font-size:9px;font-weight:600;line-height:1.2;"><span aria-hidden="true" style="width:5px;height:5px;border-radius:50%;background:#f59e0b;flex-shrink:0;"></span>Mất kết nối</span>`;
+    }
     const color = isOnline ? "#00b06f" : "#cbd5e1";
     return `
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" class="wifi-icon-hunonic ${isOnline ? '' : 'offline'}">
@@ -2020,7 +2023,7 @@ document.addEventListener("DOMContentLoaded", () => {
       children.forEach((child) => {
         const isChildOn = isHubOnline && (child.power === 1 || child.state === 1);
         const temp = child.temp || 25;
-        const statusText = !isHubOnline ? "Ngoại tuyến" : (isChildOn ? `Đang làm mát ${temp}°C` : "Đang tắt");
+        const statusText = !isHubOnline ? "Chờ kết nối lại" : (isChildOn ? `Đang làm mát ${temp}°C` : "Đang tắt");
         const subClass = isChildOn ? "on" : "";
 
         html += `
@@ -2055,7 +2058,7 @@ document.addEventListener("DOMContentLoaded", () => {
           </div>
           <div class="hunonic-card-bottom">
             <h4 class="hunonic-card-title">${escapeHtml(foundHub ? foundHub.name : "IR trung tâm")}</h4>
-            <p class="hunonic-card-sub ${isIrOnline ? 'on' : ''}">${isIrOnline ? 'Trực tuyến' : 'Ngoại tuyến'} &bull; Thiết bị con: ${irChildCount}</p>
+            <p class="hunonic-card-sub ${isIrOnline ? 'on' : ''}">${irChildCount} thiết bị đã liên kết</p>
           </div>
         </div>
 
@@ -2069,7 +2072,7 @@ document.addEventListener("DOMContentLoaded", () => {
           </div>
           <div class="hunonic-card-bottom">
             <h4 class="hunonic-card-title">Node Cảm Biến C3</h4>
-            <p class="hunonic-card-sub ${hasSensor ? 'on' : ''}">${sensorData.temp > 0 ? `${sensorData.temp.toFixed(1)}°C &bull; ${sensorData.hum.toFixed(1)} ${sensorData.hum > 120 ? "hPa" : "%"}` : 'ESP-NOW 2.4GHz'}<span style="display:block;">${sensorData.isOnline && isGatewayOnline ? 'Trực tuyến' : 'Ngoại tuyến'}</span>${getNodePresenceHtml(sensorData.isOnline && isGatewayOnline)}</p>
+            <p class="hunonic-card-sub ${hasSensor ? 'on' : ''}">${sensorData.isOnline && isGatewayOnline ? `${sensorData.temp.toFixed(1)}°C &bull; ${sensorData.hum.toFixed(1)} ${sensorData.hum > 120 ? "hPa" : "%"}` : 'Chờ dữ liệu mới'}${getNodePresenceHtml(sensorData.isOnline && isGatewayOnline)}</p>
           </div>
         </div>
 
@@ -2173,6 +2176,8 @@ document.addEventListener("DOMContentLoaded", () => {
         subText += getNodePresenceHtml(isOnline && sensorData.isOnline);
       }
 
+      if (dev.type === "sensor" && !isOnline) subText = "Chờ dữ liệu mới";
+
       customCardsHtml += `
         <div class="hunonic-card" data-id="${dev.id}" title="Bấm vào để xem chi tiết">
           <div class="hunonic-card-top">
@@ -2215,7 +2220,7 @@ document.addEventListener("DOMContentLoaded", () => {
         </div>
         <div class="hunonic-card-bottom">
           <h4 class="hunonic-card-title">${escapeHtml(foundHub ? foundHub.name : "IR trung tâm")}</h4>
-          <p class="hunonic-card-sub ${isIrOnline ? 'on' : ''}">${isIrOnline ? 'Trực tuyến' : 'Ngoại tuyến'} &bull; Thiết bị con: ${irChildCount}</p>
+          <p class="hunonic-card-sub ${isIrOnline ? 'on' : ''}">${irChildCount} thiết bị đã liên kết</p>
         </div>
       </div>
 
