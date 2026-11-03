@@ -1498,6 +1498,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // ── MỞ DRAWER BÊN TAY PHẢI CHO TRẠM GATEWAY ──────────────────────────────────
   function openGatewayDrawer() {
+    const presencePanel = document.getElementById("drawer-presence-panel");
+    if (presencePanel) presencePanel.style.display = "none";
     currentDrawerTarget = null;
     const gwName = localStorage.getItem("gate_custom_name") || "Trạm Gateway ESP32-S3";
     const gwRoom = localStorage.getItem("gate_room") || "Phòng khách";
@@ -1542,10 +1544,52 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   // ── MỞ DRAWER BÊN TAY PHẢI CHO THIẾT BỊ CON ──────────────────────────────────
+  let previousPresence = null;
+
+  function handlePresenceNotification() {
+    if (!sensorData.hasData || !sensorData.isOnline || !isGatewayOnline) return;
+    if (![true, false, 0, 1, "0", "1"].includes(sensorData.presence)) return;
+    const occupied = sensorData.presence === true || Number(sensorData.presence) === 1;
+    if (occupied && previousPresence !== true) {
+      showToast("Phát hiện có người trong phòng", "success", 10000);
+    }
+    // Only a fresh empty report rearms the next occupied notification.
+    previousPresence = occupied;
+  }
+
+  function refreshPresencePanel() {
+    let panel = document.getElementById("drawer-presence-panel");
+    const dev = customDevices.find(d => d.id === currentDrawerTarget);
+    const visible = dev && dev.type === "sensor" && !currentActiveIrChild;
+    if (!panel && visible && drawerHeroBox) {
+      panel = document.createElement("div");
+      panel.id = "drawer-presence-panel";
+      drawerHeroBox.parentNode.insertBefore(panel, drawerHeroBox);
+    }
+    if (!panel) return;
+    panel.style.display = visible ? "block" : "none";
+    if (!visible) return;
+    const online = isDeviceOnline(dev) && sensorData.hasData;
+    const known = online && [true, false, 0, 1, "0", "1"].includes(sensorData.presence);
+    const occupied = known && (sensorData.presence === true || Number(sensorData.presence) === 1);
+    const color = occupied ? "#059669" : "#64748b";
+    const label = !online ? "Mất kết nối" : !known ? "Chờ dữ liệu hiện diện" : occupied ? "Có người trong phòng" : "Không có người";
+    panel.innerHTML = `
+      <section aria-live="polite" style="padding:28px 20px;margin-bottom:22px;border:1px solid #e2e8f0;border-radius:22px;background:linear-gradient(160deg,#f0fdf4,#fff);text-align:center;">
+        <div style="margin:0 auto 16px;width:88px;height:88px;border-radius:50%;background:${occupied ? '#d1fae5' : '#f1f5f9'};display:grid;place-items:center;color:${color};font-size:42px;">
+          <i class="fa-solid ${occupied ? 'fa-person-walking' : 'fa-person'}" aria-hidden="true"></i>
+        </div>
+        <div style="font-size:11px;letter-spacing:1.4px;color:#94a3b8;font-weight:700;margin-bottom:8px;">TRẠNG THÁI HIỆN DIỆN</div>
+        <strong style="font-size:21px;color:${color};">${label}</strong>
+        <p style="margin:10px 0 0;color:#94a3b8;font-size:12px;">${online ? 'Cập nhật từ cảm biến trong phòng' : 'Đang chờ cảm biến gửi dữ liệu mới'}</p>
+      </section>`;
+  }
+
   function openChildDeviceDrawer(devId) {
     const dev = customDevices.find(d => d.id === devId);
     if (!dev) return;
     currentDrawerTarget = devId;
+    currentActiveIrChild = null;
 
     const isAc = dev.type === "ac";
     const isIrHub = dev.type === "ir_hub";
@@ -1586,6 +1630,8 @@ document.addEventListener("DOMContentLoaded", () => {
     if (editSecChild) editSecChild.style.display = "block";
     const delSecChild = document.getElementById("drawer-delete-section");
     if (delSecChild) delSecChild.style.display = "block";
+
+    refreshPresencePanel();
 
     // Xử lý hiển thị theo từng phân loại thiết bị
     if (isIrHub) {
@@ -2090,6 +2136,7 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function renderDevices() {
+    refreshPresencePanel();
     if (currentHubView) {
       renderSubViewDevices(currentHubView.type, currentHubView.dev);
       return;
@@ -3155,6 +3202,7 @@ document.addEventListener("DOMContentLoaded", () => {
         sensorData.batt = s.battery ?? 0;
         sensorData.presence = s.presence ?? null;
         sensorData.isOnline = s.is_online === true;
+        handlePresenceNotification();
 
         if (weatherTempDisplay) weatherTempDisplay.innerHTML = `${Math.round(Number(sensorData.temp))}<span class="deg-unit">°C</span>`;
         if (weatherHumDisplay) weatherHumDisplay.innerText = sensorData.hum > 120
@@ -3179,7 +3227,7 @@ document.addEventListener("DOMContentLoaded", () => {
   setInterval(fetchStatus, 2500);
 
   // ── Hàm Toast thông báo ───────────────────────────────────────────────────
-  function showToast(message, type = "info") {
+  function showToast(message, type = "info", duration = 3500) {
     const container = document.getElementById("toast-container");
     if (!container) return;
     const toast = document.createElement("div");
@@ -3192,6 +3240,6 @@ document.addEventListener("DOMContentLoaded", () => {
       toast.style.transform = "translateX(50px)";
       toast.style.transition = "all 0.3s ease";
       setTimeout(() => toast.remove(), 300);
-    }, 3500);
+    }, duration);
   }
 });
