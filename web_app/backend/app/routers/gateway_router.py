@@ -41,18 +41,27 @@ def get_gateway_status(current_user: dict = Depends(get_current_user)):
 
     gw_online = latest_gateway_status.get("online", False)
 
-    # Cập nhật trạng thái trực tuyến thực tế của thiết bị Điều hòa từ Hunonic Cloud
+    # Cập nhật trạng thái trực tuyến thực tế của thiết bị Điều hòa qua trường ir_online của Gateway
     hun_info = hunonic_service.get_status()
-    # QUY TẮC CỐT LÕI: Khi Gateway ngoại tuyến -> Tất cả thiết bị con qua Gateway bắt buộc ngoại tuyến!
+    is_ac_online = hun_info.get("is_online", False)
+
+    # QUY TẮC CỐT LÕI: Khi Gateway ngoại tuyến hoặc IR Hub chưa cắm nguồn -> Ngoại tuyến!
     if not gw_online:
         latest_gateway_status["ac_online"] = False
         latest_gateway_status["ac_offline_reason"] = "Trạm Gateway ESP32-S3 đang ngoại tuyến (Offline)"
     else:
-        latest_gateway_status["ac_online"] = hun_info.get("is_online", False)
+        latest_gateway_status["ac_online"] = is_ac_online
         latest_gateway_status["ac_offline_reason"] = hun_info.get("reason")
 
-    latest_gateway_status["ac_hub_state"] = hun_info.get("hub_state")
+    latest_gateway_status["ac_hub_state"] = hun_info.get("hub_state", "2")
     latest_gateway_status["ac_hub_last_online"] = hun_info.get("hub_last_online")
+
+    # Đồng bộ trạng thái online vào từng thiết bị con
+    if "ac_devices" in latest_gateway_status and isinstance(latest_gateway_status["ac_devices"], dict):
+        for did, dinfo in latest_gateway_status["ac_devices"].items():
+            dinfo["online"] = latest_gateway_status["ac_online"]
+            if not latest_gateway_status["ac_online"]:
+                dinfo["power"] = 0
 
     return {
         "success": True,
@@ -205,17 +214,18 @@ def get_discovered_devices(current_user: dict = Depends(get_current_user)):
             c["power"] = 0
             c["offline_reason"] = "Trạm Gateway ESP32-S3 đang ngoại tuyến (Offline)"
 
-    devices.append({
-        "id": f"ir_hub_{hub_id}",
-        "name": hub_name,
-        "type": "ir_hub",
-        "source": "Hunonic Cloud / IR Smart Pro",
-        "device_id": hub_id,
-        "online": is_hub_online,
-        "offline_reason": "Trạm Gateway ESP32-S3 đang ngoại tuyến (Offline)" if not gw_online else hun_info.get("reason", "Ngoại tuyến"),
-        "details": f"ID: {hub_id} • {len(children)} thiết bị IR kết nối • {'Trực tuyến' if is_hub_online else 'Ngoại tuyến'}",
-        "children": children
-    })
+    # Chỉ thêm IR Hub vào danh sách phát hiện nếu thực tế thiết bị đang trực tuyến
+    if is_hub_online:
+        devices.append({
+            "id": f"ir_hub_{hub_id}",
+            "name": hub_name,
+            "type": "ir_hub",
+            "source": "Hunonic Cloud / IR Smart Pro",
+            "device_id": hub_id,
+            "online": True,
+            "details": f"ID: {hub_id} • {len(children)} thiết bị IR kết nối • Trực tuyến",
+            "children": children
+        })
 
     # 2. Node Cảm Biến ESP-NOW: CHỈ HIỆN KHI THỰC SỰ CÓ BẢN TIN NHẬN ĐƯỢC TỪ NODE C3
     last_sensor_seen = latest_sensor_data.get("last_seen")
@@ -229,42 +239,23 @@ def get_discovered_devices(current_user: dict = Depends(get_current_user)):
             s_dt = datetime.fromisoformat(last_sensor_seen)
             if s_dt.tzinfo is None:
                 s_dt = s_dt.replace(tzinfo=timezone.utc)
-            if (datetime.now(timezone.utc) - s_dt).total_seconds() <= 120:
-                devices.append({
-                    "id": f"node_espnow_{latest_sensor_data.get('node_id', 1)}",
-                    "name": f"Node Cảm Biến #{latest_sensor_data.get('node_id', 1)} (ESP-NOW)",
-                    "type": "sensor",
-                    "source": "ESP-NOW 2.4GHz",
-                    "mac": latest_sensor_data.get("mac", "ESP-NOW"),
-                    "online": True,
-                    "details": f"Nhiệt độ: {latest_sensor_data.get('val1', 0):.1f}°C • Độ ẩm: {latest_sensor_data.get('val2', 0):.1f}% • Pin: {latest_sensor_data.get('battery', 0):.2f}V"
-                })
+            seconds_ago = (datetime.now(timezone.utc) - s_dt).total_seconds()
+            node_online = (seconds_ago <= 60)
+            val2_val = latest_sensor_data.get('val2', 0)
+            val2_label = "Áp suất" if val2_val > 120 else "Độ ẩm"
+            val2_unit = "hPa" if val2_val > 120 else "%"
+            devices.append({
+                "id": f"node_espnow_{latest_sensor_data.get('node_id', 1)}",
+                "name": f"Node Cảm Biến #{latest_sensor_data.get('node_id', 1)} (ESP-NOW)",
+                "type": "sensor",
+                "source": "ESP-NOW 2.4GHz",
+                "mac": latest_sensor_data.get("mac", "ESP-NOW"),
+                "online": node_online,
+                "seconds_ago": max(0, int(seconds_ago)),
+                "details": f"Nhiệt độ: {latest_sensor_data.get('val1', 0):.1f}°C • {val2_label}: {val2_val:.1f} {val2_unit} • Pin: {latest_sensor_data.get('battery', 0):.2f}V"
+            })
         except Exception:
             pass
-
-    # 3. Relay Kênh 1 On-board Gateway
-    devices.append({
-        "id": "relay_ch_1",
-        "name": "Công Tắc Relay 1",
-        "type": "relay",
-        "source": "Ngõ Ra Gateway (GPIO10)",
-        "channel": 1,
-        "online": latest_gateway_status.get("online", False),
-        "state": latest_gateway_status.get("relay1", 0),
-        "details": "Chân điều khiển GPIO10 • Tải 220V/10A"
-    })
-
-    # 4. Relay Kênh 2 On-board Gateway
-    devices.append({
-        "id": "relay_ch_2",
-        "name": "Công Tắc Relay 2",
-        "type": "relay",
-        "source": "Ngõ Ra Gateway (GPIO11)",
-        "channel": 2,
-        "online": latest_gateway_status.get("online", False),
-        "state": latest_gateway_status.get("relay2", 0),
-        "details": "Chân điều khiển GPIO11 • Tải 220V/10A"
-    })
 
     return {
         "success": True,

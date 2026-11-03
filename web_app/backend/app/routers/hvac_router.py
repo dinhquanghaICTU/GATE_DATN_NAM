@@ -29,8 +29,8 @@ def get_hvac_status(current_user: dict = Depends(get_current_user)):
     return {
         "success": True,
         "data": {
-            "id": latest_gateway_status.get("ac_id") or hun_info.get("ac_id", "4000261"),
-            "name": latest_gateway_status.get("ac_name") or hun_info.get("ac_name", "Điều hoà phòng Hương"),
+            "id": latest_gateway_status.get("ac_id") or hun_info.get("ac_id", ""),
+            "name": latest_gateway_status.get("ac_name") or hun_info.get("ac_name", "Điều hòa"),
             "power": latest_gateway_status.get("ac_power", 0) if gw_online else 0,
             "temp": latest_gateway_status.get("ac_temp", 25),
             "ws_connected": latest_gateway_status.get("ws_connected", 0),
@@ -120,9 +120,9 @@ def control_hvac(
                 detail=f"Không thể điều khiển: {reason}"
             )
 
-    dev_id = req.device_id.strip() if req.device_id else latest_gateway_status["ac_id"]
-    if not dev_id:
-        dev_id = "4000261"
+    dev_id = req.device_id.strip() if req.device_id else latest_gateway_status.get("ac_id", "")
+    if not dev_id and latest_gateway_status.get("ac_devices"):
+        dev_id = next(iter(latest_gateway_status["ac_devices"].keys()), "")
 
     cmd = {
         "cmd": "hunonic_ac",

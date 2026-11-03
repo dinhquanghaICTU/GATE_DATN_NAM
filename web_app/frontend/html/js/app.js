@@ -142,9 +142,9 @@ document.addEventListener("DOMContentLoaded", () => {
     temp: 0,
     hum: 0,
     batt: 0,
-    presence: null,
-    isOnline: false,
-    hasData: false
+    presence: 0,
+    hasData: false,
+    isOnline: true
   };
 
   let isGatewayOnline = false;
@@ -152,7 +152,9 @@ document.addEventListener("DOMContentLoaded", () => {
     uptime_sec: 0,
     free_heap: 0,
     rssi: -100,
-    fw_ver: "1.0.0"
+    fw_ver: "1.0.0",
+    ac_online: false,
+    ac_offline_reason: "Chưa nhận được dữ liệu từ Gateway"
   };
 
   // Trạng thái hiển thị Gateway & thiết bị ở phòng chính (luôn hiển thị mặc định)
@@ -166,22 +168,46 @@ document.addEventListener("DOMContentLoaded", () => {
     customDevices = [];
   }
 
-  // Remove switch entries saved by earlier dashboard versions.
-  customDevices = customDevices.filter(d => d.type !== "relay" && d.type !== "socket");
-  localStorage.setItem("gate_custom_devices", JSON.stringify(customDevices));
+  const hasSavedDevices = localStorage.getItem("gate_custom_devices") !== null;
+  const isIrExplicitlyDeleted = localStorage.getItem("gate_ir_hub_deleted") === "true";
+  const isSensorExplicitlyDeleted = localStorage.getItem("gate_sensor_deleted") === "true";
 
   function getActiveIrHub() {
-    if (localStorage.getItem("gate_ir_hub_deleted") === "true") return null;
-    return customDevices.find(d => d.type === "ir_hub" || d.id === "dev_ir_hub_hunonic") || null;
+    if (localStorage.getItem("gate_ir_hub_deleted") === "true") {
+      return null;
+    }
+    return customDevices.find(d => d.type === "ir_hub" || d.id === "dev_ir_hub_hunonic" || (d.id && d.id.includes("ir_hub"))) || null;
   }
+
+  function getActiveSensor() {
+    if (localStorage.getItem("gate_sensor_deleted") === "true") {
+      return null;
+    }
+    return customDevices.find(d => d.type === "sensor" || d.id === "dev_espnow_node_1" || (d.id && (d.id.includes("sensor") || d.id.includes("espnow")))) || null;
+  }
+
+  // Remove switch entries saved by earlier dashboard versions.
+  customDevices = customDevices.filter(d => d.type !== "relay" && d.type !== "socket");
+  if (isSensorExplicitlyDeleted) {
+    customDevices = customDevices.filter(d => d.type !== "sensor" && d.id !== "dev_espnow_node_1" && !(d.id && (d.id.includes("sensor") || d.id.includes("espnow"))));
+  }
+  localStorage.setItem("gate_custom_devices", JSON.stringify(customDevices));
 
   // ── MIGRATION: Đảm bảo trạm IR trung tâm là thiết bị cha chứa danh sách điều hòa (MIRAGE, FUNIKI)
   let foundHub = getActiveIrHub();
-  let acItems = customDevices.filter(d => d.type === "ac");
 
-  const defaultHunonicChildren = [];
+  // Nếu người dùng đã từng lưu danh sách và trong đó không có IR Hub -> đồng bộ flag đã xóa
+  if (hasSavedDevices && !foundHub) {
+    localStorage.setItem("gate_ir_hub_deleted", "true");
+  }
 
-  if (!foundHub && localStorage.getItem("gate_ir_hub_deleted") !== "true") {
+  // Nếu người dùng đã từng lưu danh sách và trong đó không có Sensor -> đồng bộ flag đã xóa
+  if (hasSavedDevices && !getActiveSensor()) {
+    localStorage.setItem("gate_sensor_deleted", "true");
+  }
+
+  // Chỉ khởi tạo mặc định nếu người dùng chưa từng lưu cấu hình và chưa từng chủ động xóa
+  if (!hasSavedDevices && !foundHub && !isIrExplicitlyDeleted) {
     foundHub = {
       id: "dev_ir_hub_hunonic",
       name: "IR trung tâm",
@@ -189,10 +215,11 @@ document.addEventListener("DOMContentLoaded", () => {
       room: localStorage.getItem("gate_room") || "Phòng khách",
       device_id: "3987670",
       extra: "Trạm phát IR 360° đa hướng",
-      children: defaultHunonicChildren,
+      children: [],
       state: 0
     };
 
+    // Chỉ loại bỏ điều hòa lẻ độc lập (vì đã gom vào foundHub.children), giữ nguyên các Node cảm biến và thiết bị người dùng đã thêm
     customDevices = customDevices.filter(d => d.type !== "ac");
     customDevices.unshift(foundHub);
     localStorage.setItem("gate_custom_devices", JSON.stringify(customDevices));
@@ -201,11 +228,20 @@ document.addEventListener("DOMContentLoaded", () => {
     if (!foundHub.name || foundHub.name === "IR Hunonic Smart Pro") {
       foundHub.name = "IR trung tâm";
     }
-    // Rebuild children from MQTT/API, never keep demo or cached AC state.
-    foundHub.children = [];
+    if (!foundHub.children) {
+      foundHub.children = [];
+    }
+    customDevices = customDevices.filter(d => d.type !== "ac");
+    localStorage.setItem("gate_custom_devices", JSON.stringify(customDevices));
+  } else {
+    // Lưu giữ nguyên vẹn mọi thiết bị người dùng đã thêm (Node Cảm Biến C3, v.v.)
     customDevices = customDevices.filter(d => d.type !== "ac");
     localStorage.setItem("gate_custom_devices", JSON.stringify(customDevices));
   }
+
+  customDevices.forEach(dev => {
+    if (dev.type === "ir_hub") dev.children = [];
+  });
 
   // ── Cập nhật ngày tháng tiếng Việt ──────────────────────────────────────────
   function updateLiveDate() {
@@ -516,21 +552,29 @@ document.addEventListener("DOMContentLoaded", () => {
   async function loadScannedWifiList(forceRescan = false) {
     if (!wifiScannedContainer) return;
 
-    if (forceRescan) {
+    if (forceRescan || !wifiScannedContainer.querySelector(".wifi-scanned-item")) {
       wifiScannedContainer.innerHTML = `
-        <div style="text-align: center; padding: 22px 12px; color: #64748b;">
-          <i class="fa-solid fa-rotate fa-spin" style="font-size: 22px; color: #10b981; margin-bottom: 8px;"></i>
-          <p style="margin: 0; font-size: 13px; font-weight: 600;">Đang quét các mạng Wi-Fi thực tế xung quanh...</p>
+        <div style="text-align: center; padding: 28px 12px; color: #64748b;">
+          <i class="fa-solid fa-rotate fa-spin" style="font-size: 26px; color: var(--hunonic-green); margin-bottom: 10px;"></i>
+          <p style="margin: 0; font-size: 14px; font-weight: 600;">Đang quét các mạng Wi-Fi thực tế xung quanh máy tính...</p>
         </div>
       `;
     }
 
     let networks = [];
     try {
-      const res = await fetch("http://localhost:8088/api/wifi/scan", {
-        method: "GET",
-        headers: { "Accept": "application/json" }
-      }).then(r => r.json());
+      let res = null;
+      try {
+        res = await fetch("http://127.0.0.1:8088/api/wifi/scan", {
+          method: "GET",
+          headers: { "Accept": "application/json" }
+        }).then(r => r.json());
+      } catch (e1) {
+        res = await fetch("http://localhost:8088/api/wifi/scan", {
+          method: "GET",
+          headers: { "Accept": "application/json" }
+        }).then(r => r.json());
+      }
       if (res && res.success && Array.isArray(res.networks) && res.networks.length > 0) {
         networks = res.networks;
       }
@@ -539,29 +583,42 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     if (!networks || networks.length === 0) {
-      networks = [
-        { ssid: "Dinh", signal: 85, security: "WPA2", band: "2.4G" },
-        { ssid: "QuangHa", signal: 78, security: "WPA2", band: "2.4G" },
-        { ssid: "ICTU_SMART_HOME_2.4G", signal: 72, security: "WPA2", band: "2.4G" },
-        { ssid: "Viettel_Home_IoT", signal: 65, security: "WPA2", band: "2.4G" }
-      ];
+      wifiScannedContainer.innerHTML = `
+        <div style="text-align: center; padding: 26px 16px; color: #64748b;">
+          <i class="fa-solid fa-satellite-dish" style="font-size: 28px; color: #94a3b8; margin-bottom: 8px;"></i>
+          <p style="margin: 0 0 6px 0; font-size: 14px; font-weight: 600; color: #334155;">Chưa quét được mạng Wi-Fi xung quanh máy tính</p>
+          <p style="margin: 0; font-size: 12px; color: #64748b;">Vui lòng nhấn nút <i class="fa-solid fa-rotate"></i> để thử lại, hoặc tự nhập Tên & Mật khẩu Wi-Fi ở bên dưới.</p>
+        </div>
+        <div class="wifi-scanned-item manual-item" data-ssid="">
+          <div class="wifi-item-left">
+            <i class="fa-solid fa-pen-to-square"></i>
+            <span class="wifi-item-ssid">Nhập tên Wi-Fi thủ công...</span>
+          </div>
+        </div>
+      `;
+      return;
     }
 
     let html = "";
     networks.forEach((net, idx) => {
       const isSelected = (idx === 0);
-      const iconClass = net.signal >= 75 ? "wifi-strong" : (net.signal >= 50 ? "wifi-med" : "wifi-weak");
+      const iconClass = net.signal >= 75 ? "wifi-strong" : (net.signal >= 45 ? "wifi-med" : "wifi-weak");
       const signalText = `${net.signal}%`;
+      const is5G = net.band === "5G";
+      const bandClass = is5G ? "wifi-band-5g" : "wifi-band-tag";
+      const bandLabel = is5G ? "5GHz" : "2.4GHz";
+      const hintTitle = is5G ? "ESP32-S3 không hỗ trợ sóng 5GHz" : "Chuẩn 2.4GHz tương thích Gateway ESP32-S3";
+
       html += `
-        <div class="wifi-scanned-item ${isSelected ? 'selected' : ''}" data-ssid="${escapeHtml(net.ssid)}">
+        <div class="wifi-scanned-item ${isSelected ? 'selected' : ''}" data-ssid="${escapeHtml(net.ssid)}" title="${hintTitle}">
           <div class="wifi-item-left">
             <i class="fa-solid fa-wifi ${iconClass}"></i>
             <span class="wifi-item-ssid">${escapeHtml(net.ssid)}</span>
           </div>
           <div class="wifi-item-right">
             <span class="wifi-lock-badge"><i class="fa-solid fa-lock"></i> ${escapeHtml(net.security || 'WPA2')}</span>
-            <span class="wifi-band-tag">${escapeHtml(net.band || '2.4G')}</span>
-            <span style="font-size: 11px; color: #10b981; font-weight: 700;">${signalText}</span>
+            <span class="${bandClass}">${bandLabel}</span>
+            <span style="font-size: 12px; color: #10b981; font-weight: 700; min-width: 32px; text-align: right;">${signalText}</span>
           </div>
         </div>
       `;
@@ -571,14 +628,14 @@ document.addEventListener("DOMContentLoaded", () => {
       <div class="wifi-scanned-item manual-item" data-ssid="">
         <div class="wifi-item-left">
           <i class="fa-solid fa-pen-to-square"></i>
-          <span class="wifi-item-ssid">Nhập tên Wi-Fi khác (Ẩn danh/Thủ công)...</span>
+          <span class="wifi-item-ssid">Nhập tên Wi-Fi khác (Ẩn danh / Thủ công)...</span>
         </div>
       </div>
     `;
 
     wifiScannedContainer.innerHTML = html;
 
-    // Tự động chọn mạng đầu tiên (mạnh nhất) & focus ô mật khẩu
+    // Tự động chọn mạng đầu tiên (mạng 2.4GHz mạnh nhất) & focus ô mật khẩu
     if (networks.length > 0 && bleWifiSsidInput) {
       bleWifiSsidInput.value = networks[0].ssid;
       if (bleWifiPassInput) {
@@ -689,11 +746,20 @@ document.addEventListener("DOMContentLoaded", () => {
       // Nếu Web BLE không có sẵn (Chrome bị tổ chức khóa), tự động gửi qua Local BLE Bridge trên máy tính!
       if (!wroteDirectly) {
         try {
-          const bridgeRes = await fetch("http://localhost:8088/ble_wifi", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ ssid: ssid, password: pass })
-          }).then(r => r.json());
+          let bridgeRes = null;
+          try {
+            bridgeRes = await fetch("http://127.0.0.1:8088/ble_wifi", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ ssid: ssid, password: pass })
+            }).then(r => r.json());
+          } catch (e1) {
+            bridgeRes = await fetch("http://localhost:8088/ble_wifi", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ ssid: ssid, password: pass })
+            }).then(r => r.json());
+          }
           if (bridgeRes && bridgeRes.success) {
             console.log("Local BLE Bridge đã nạp thành công:", bridgeRes.message);
             wroteDirectly = true;
@@ -795,7 +861,7 @@ document.addEventListener("DOMContentLoaded", () => {
   if (btnAddDevice) {
     btnAddDevice.addEventListener("click", () => {
       if (isGateAddedToRoom) {
-        openGatewayManageModal("tab-add-new-device");
+        openGatewayDrawer(true);
       } else {
         openAddGatewayModal();
       }
@@ -857,6 +923,9 @@ document.addEventListener("DOMContentLoaded", () => {
   const drawerChildCount = document.getElementById("drawer-child-count");
   const drawerChildList = document.getElementById("drawer-child-list");
   const btnDrawerAddChild = document.getElementById("btn-drawer-add-child");
+  const drawerAddPanel = document.getElementById("drawer-add-panel");
+  const drawerAvailList = document.getElementById("drawer-avail-list");
+  const btnDrawerCloseAdd = document.getElementById("btn-drawer-close-add");
   const drawerEditName = document.getElementById("drawer-edit-name");
   const drawerEditRoom = document.getElementById("drawer-edit-room");
   const drawerGwExtraActions = document.getElementById("drawer-gw-extra-actions");
@@ -906,8 +975,12 @@ document.addEventListener("DOMContentLoaded", () => {
       }
       return Boolean(dev.online);
     }
-    if (dev.type === "sensor" || dev.id === "dev_espnow_node_1") {
-      return sensorData.hasData && sensorData.isOnline === true;
+    // Node Cảm biến ESP-NOW: 1 phút không thấy phản hồi mới tính là offline
+    if (dev.type === "sensor" || dev.id === "dev_espnow_node_1" || (dev.id && dev.id.includes("espnow")) || (dev.name && dev.name.toLowerCase().includes("node cảm biến"))) {
+      if (sensorData.isOnline !== undefined) {
+        return Boolean(sensorData.isOnline);
+      }
+      return Boolean(sensorData.hasData);
     }
     return dev.online !== false;
   }
@@ -924,16 +997,20 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     const devName = (dev && dev.name) ? dev.name.toLowerCase() : "";
-    // Brand 117 (Mirage, AUX...): Hỗ trợ dải nhiệt độ lên tới 32°C
-    if (brand === 117 || devName.includes("mirage")) {
-      return { min: 16, max: 32, brand: 117, brandName: "Mirage" };
+    let maxTemp = 30;
+    let brandName = (dev && dev.name) ? dev.name : "Điều hòa";
+
+    // Brand 117 (Mirage, AUX...) hoặc các model đời mới hỗ trợ dải nhiệt độ lên tới 32°C
+    // Hoặc nếu nhiệt độ hiện tại báo về > 30°C thì tự động mở rộng dải lên 32°C
+    if (brand === 117 || devName.includes("mirage") || devName.includes("aux") || 
+        (dev && dev.temp && dev.temp > 30) || (acState && acState.temp && acState.temp > 30)) {
+      maxTemp = 32;
+      if (brand === 117 || devName.includes("mirage")) brandName = "Mirage";
+    } else if (brand === 104 || devName.includes("funiki")) {
+      brandName = "Funiki";
     }
-    // Brand 104 (Funiki): Dòng điều hòa tiêu chuẩn Việt Nam giới hạn tối đa 30°C
-    if (brand === 104 || devName.includes("funiki")) {
-      return { min: 16, max: 30, brand: 104, brandName: "Funiki" };
-    }
-    // Các hãng phổ thông (Daikin, Panasonic, Casper, Gree, Midea, Toshiba...) đều giới hạn 30°C
-    return { min: 16, max: 30, brand: brand || 104, brandName: "Standard" };
+
+    return { min: 16, max: maxTemp, brand: brand || 0, brandName: brandName };
   }
 
   // ── CẬP NHẬT GIAO DIỆN ĐIỀU HÒA TRONG DRAWER ──────────────────────────────
@@ -1100,7 +1177,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (drawerHeaderIcon) drawerHeaderIcon.innerHTML = `<i class="fa-solid fa-wind"></i>`;
 
     if (drawerHeroName) drawerHeroName.innerText = childDev.name;
-    if (drawerHeroSub) drawerHeroSub.innerText = `${parentHub.room || 'Phòng khách'} • ID: ${childDev.id || '4000261'}`;
+    if (drawerHeroSub) drawerHeroSub.innerText = `${parentHub.room || 'Phòng khách'} • ID: ${childDev.id || ''}`;
     if (drawerHeroIconInner) drawerHeroIconInner.innerHTML = `<i class="fa-solid fa-wind"></i>`;
 
     updateDrawerAcUI(childDev);
@@ -1288,7 +1365,7 @@ document.addEventListener("DOMContentLoaded", () => {
     renderDevices();
 
     // 3. Chuẩn bị payload lệnh
-    let acId = (targetDev && targetDev.id) ? targetDev.id : (gwMetrics.ac_id || "4003248");
+    let acId = (targetDev && targetDev.id) ? String(targetDev.id) : (gwMetrics.ac_id ? String(gwMetrics.ac_id) : "");
     if (targetDev && targetDev.extra && !targetDev.id) {
       const m = targetDev.extra.match(/ID:\s*([0-9a-zA-Z_]+)/);
       if (m && m[1]) acId = m[1];
@@ -1502,7 +1579,7 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   // ── MỞ DRAWER BÊN TAY PHẢI CHO TRẠM GATEWAY ──────────────────────────────────
-  function openGatewayDrawer() {
+  function openGatewayDrawer(openAdd = false) {
     const presencePanel = document.getElementById("drawer-presence-panel");
     if (presencePanel) presencePanel.style.display = "none";
     currentDrawerTarget = null;
@@ -1537,6 +1614,13 @@ document.addEventListener("DOMContentLoaded", () => {
     updateDrawerGatewayTelemetry();
     renderDrawerChildList();
 
+    if (drawerAddPanel) {
+      drawerAddPanel.style.display = openAdd ? "block" : "none";
+      if (openAdd) {
+        renderDrawerAvailableDevices();
+      }
+    }
+
     if (drawerEditName) drawerEditName.value = gwName;
     if (drawerEditRoom) drawerEditRoom.value = gwRoom;
 
@@ -1546,6 +1630,12 @@ document.addEventListener("DOMContentLoaded", () => {
 
     if (deviceDetailDrawer) deviceDetailDrawer.classList.add("open");
     if (drawerBackdrop) drawerBackdrop.classList.add("active");
+
+    if (openAdd && drawerGwChildSection) {
+      setTimeout(() => {
+        drawerGwChildSection.scrollIntoView({ behavior: "smooth", block: "center" });
+      }, 150);
+    }
   }
 
   // ── MỞ DRAWER BÊN TAY PHẢI CHO THIẾT BỊ CON ──────────────────────────────────
@@ -1633,9 +1723,12 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function openChildDeviceDrawer(devId) {
-    const dev = customDevices.find(d => d.id === devId);
+    let dev = customDevices.find(d => d.id === devId);
+    if (!dev && (devId === "dev_espnow_node_1" || (typeof devId === "string" && (devId.includes("espnow") || devId.includes("sensor"))))) {
+      dev = customDevices.find(d => d.type === "sensor" || (d.id && (d.id.includes("espnow") || d.id.includes("sensor"))));
+    }
     if (!dev) return;
-    currentDrawerTarget = devId;
+    currentDrawerTarget = dev.id;
     currentActiveIrChild = null;
 
     const isAc = dev.type === "ac";
@@ -1835,11 +1928,168 @@ document.addEventListener("DOMContentLoaded", () => {
     drawerChildList.innerHTML = html;
   }
 
+  // ── RENDER DANH SÁCH THIẾT BỊ KHẢ DỤNG ĐỂ THÊM VÀO GATEWAY TRỰC TIẾP TRONG DRAWER ──
+  function renderDrawerAvailableDevices() {
+    if (!drawerAvailList) return;
+
+    foundHub = getActiveIrHub();
+    const hasIrHub = Boolean(foundHub || customDevices.some(d => d.type === "ir_hub" || d.id === "dev_ir_hub_hunonic" || (d.id && d.id.includes("ir_hub"))));
+    const hasSensor = customDevices.some(d => d.type === "sensor" || d.id === "dev_espnow_node_1");
+
+    // QUY TẮC CỐT LÕI: CHỈ CHO PHÉP HIỂN THỊ KHI SCAN THẤY THỰC TẾ ĐANG TRỰC TUYẾN
+    // 1. Trạm IR: Phải kết nối được Gateway VÀ trạm IR thực tế đang cắm điện, trực tuyến trên Hunonic Cloud
+    const isIrHubScanned = Boolean(isGatewayOnline && gwMetrics.ac_online === true);
+
+    // 2. Node C3: Phải kết nối được Gateway VÀ có bản tin sóng ESP-NOW thực tế gửi về
+    const isSensorScanned = Boolean(
+      isGatewayOnline &&
+      sensorData.hasData &&
+      (sensorData.temp > 0 || sensorData.hum > 0 || sensorData.batt > 0)
+    );
+
+    let itemsHtml = "";
+
+    // 1. Trạm phát IR trung tâm Hunonic: CHỈ HIỆN KHI SCAN THẤY THỰC TẾ
+    if (!hasIrHub && isIrHubScanned) {
+      const acCountStr = gwMetrics.ac_count !== undefined ? `${gwMetrics.ac_count} điều hòa con` : "Hồng ngoại 360°";
+      itemsHtml += `
+        <div class="drawer-avail-item" style="display: flex; align-items: center; justify-content: space-between; padding: 10px 12px; background: #ffffff; border: 1.5px solid #10b981; border-radius: 12px; margin-bottom: 8px; box-shadow: 0 2px 8px rgba(16, 185, 129, 0.1);">
+          <div style="display: flex; align-items: center; gap: 10px;">
+            <div style="width: 36px; height: 36px; border-radius: 10px; background: #ecfdf5; color: #059669; display: flex; align-items: center; justify-content: center; font-size: 1.05rem;">
+              <i class="fa-solid fa-tower-broadcast"></i>
+            </div>
+            <div>
+              <h5 style="font-size: 0.85rem; font-weight: 700; color: #1e293b; margin: 0 0 2px;">IR trung tâm</h5>
+              <p style="font-size: 0.72rem; color: #059669; margin: 0; font-weight: 500;">
+                <i class="fa-solid fa-circle" style="font-size: 0.5rem;"></i> Trực tuyến &bull; ${acCountStr}
+              </p>
+            </div>
+          </div>
+          <button type="button" class="btn-drawer-quick-add" data-type="ir_hub" data-id="dev_ir_hub_hunonic" data-name="IR trung tâm" style="padding: 6px 14px; background: #00b06f; color: #ffffff; border: none; border-radius: 8px; font-size: 0.78rem; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 4px; box-shadow: 0 2px 6px rgba(0,176,111,0.25);">
+            <i class="fa-solid fa-plus"></i> Thêm
+          </button>
+        </div>
+      `;
+    }
+
+    // 2. Node Cảm Biến C3 (ESP-NOW): CHỈ HIỆN KHI SCAN THẤY THỰC TẾ
+    if (!hasSensor && isSensorScanned) {
+      itemsHtml += `
+        <div class="drawer-avail-item" style="display: flex; align-items: center; justify-content: space-between; padding: 10px 12px; background: #ffffff; border: 1.5px solid #38bdf8; border-radius: 12px; margin-bottom: 8px; box-shadow: 0 2px 8px rgba(56, 189, 248, 0.1);">
+          <div style="display: flex; align-items: center; gap: 10px;">
+            <div style="width: 36px; height: 36px; border-radius: 10px; background: #f0f9ff; color: #0284c7; display: flex; align-items: center; justify-content: center; font-size: 1.05rem;">
+              <i class="fa-solid fa-satellite-dish"></i>
+            </div>
+            <div>
+              <h5 style="font-size: 0.85rem; font-weight: 700; color: #1e293b; margin: 0 0 2px;">Node Cảm Biến C3</h5>
+              <p style="font-size: 0.72rem; color: #0284c7; margin: 0; font-weight: 500;">
+                <i class="fa-solid fa-circle" style="font-size: 0.5rem;"></i> Sóng ESP-NOW 2.4GHz
+              </p>
+            </div>
+          </div>
+          <button type="button" class="btn-drawer-quick-add" data-type="sensor" data-id="dev_espnow_node_1" data-name="Node Cảm Biến C3" style="padding: 6px 14px; background: #0284c7; color: #ffffff; border: none; border-radius: 8px; font-size: 0.78rem; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 4px; box-shadow: 0 2px 6px rgba(2,132,199,0.25);">
+            <i class="fa-solid fa-plus"></i> Thêm
+          </button>
+        </div>
+      `;
+    }
+
+    if (!itemsHtml) {
+      itemsHtml = `
+        <div style="text-align: center; padding: 16px 12px; color: #64748b; background: #f8fafc; border: 1px dashed #cbd5e1; border-radius: 12px; font-size: 0.78rem;">
+          <div style="width: 36px; height: 36px; border-radius: 50%; background: #f1f5f9; display: flex; align-items: center; justify-content: center; margin: 0 auto 8px; font-size: 1rem; color: #94a3b8;">
+            <i class="fa-solid fa-satellite-dish"></i>
+          </div>
+          <strong style="display: block; color: #334155; margin-bottom: 2px;">Chưa quét thấy thiết bị nào</strong>
+          <span style="font-size: 0.73rem; line-height: 1.4; display: block; color: #64748b;">
+            Chỉ thiết bị con thực tế đang trực tuyến (Cắm nguồn trạm IR hoặc bật nguồn Node C3) mới xuất hiện tại đây.
+          </span>
+          <button type="button" id="btn-drawer-rescan" style="display: inline-flex; align-items: center; gap: 6px; margin-top: 10px; padding: 5px 12px; background: #ffffff; color: #059669; border: 1px solid #10b981; border-radius: 6px; font-size: 0.74rem; font-weight: 600; cursor: pointer;">
+            <i class="fa-solid fa-rotate"></i> Quét lại
+          </button>
+        </div>
+      `;
+    }
+
+    drawerAvailList.innerHTML = itemsHtml;
+
+    // Nút quét lại
+    const btnRescan = drawerAvailList.querySelector("#btn-drawer-rescan");
+    if (btnRescan) {
+      btnRescan.addEventListener("click", async () => {
+        const icon = btnRescan.querySelector("i");
+        if (icon) icon.classList.add("fa-spin");
+        showToast("Đang dò quét các thiết bị trực tuyến...", "info");
+        await fetchStatus();
+        renderDrawerAvailableDevices();
+        if (icon) icon.classList.remove("fa-spin");
+      });
+    }
+
+    // Gắn sự kiện click Thêm ngay trong drawer
+    drawerAvailList.querySelectorAll(".btn-drawer-quick-add").forEach(btn => {
+      btn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        const type = btn.getAttribute("data-type");
+        const id = btn.getAttribute("data-id");
+        const name = btn.getAttribute("data-name");
+
+        if (type === "ir_hub") {
+          localStorage.removeItem("gate_ir_hub_deleted");
+          const newDev = {
+            id: id || "dev_ir_hub_hunonic",
+            name: name || "IR trung tâm",
+            type: "ir_hub",
+            room: localStorage.getItem("gate_room") || "Phòng khách",
+            device_id: "3987670",
+            extra: "Trạm phát IR 360° đa hướng",
+            children: [],
+            state: 0
+          };
+          foundHub = newDev;
+          customDevices.unshift(newDev);
+          localStorage.setItem("gate_custom_devices", JSON.stringify(customDevices));
+          renderDrawerChildList();
+          renderDrawerAvailableDevices();
+          renderDevices();
+          showToast(`Đã thêm thành công [${name}] vào Gateway!`, "success");
+        } else if (type === "sensor") {
+          localStorage.removeItem("gate_sensor_deleted");
+          const newDev = {
+            id: id || "dev_espnow_node_1",
+            name: name || "Node Cảm Biến C3",
+            type: "sensor",
+            room: localStorage.getItem("gate_room") || "Phòng khách",
+            extra: "ESP-NOW 2.4GHz",
+            state: 0
+          };
+          customDevices.push(newDev);
+          localStorage.setItem("gate_custom_devices", JSON.stringify(customDevices));
+          renderDrawerChildList();
+          renderDrawerAvailableDevices();
+          renderDevices();
+          showToast(`Đã thêm thành công [${name}] vào Gateway!`, "success");
+        }
+      });
+    });
+  }
+
   // ── XỬ LÝ SỰ KIỆN TRONG RIGHT DRAWER ────────────────────────────────────────
-  // Nút "+ Thêm Thiết Bị" trong drawer của Gateway
+  // Nút "+ Thêm Thiết Bị" trong drawer của Gateway -> Mở rộng khay thêm ngay trong drawer
   if (btnDrawerAddChild) {
     btnDrawerAddChild.addEventListener("click", () => {
-      openGatewayManageModal("tab-add-new-device");
+      if (drawerAddPanel) {
+        const isShown = drawerAddPanel.style.display !== "none";
+        drawerAddPanel.style.display = isShown ? "none" : "block";
+        if (!isShown) renderDrawerAvailableDevices();
+      }
+    });
+  }
+
+  // Nút đóng khay thêm thiết bị trong drawer
+  if (btnDrawerCloseAdd) {
+    btnDrawerCloseAdd.addEventListener("click", () => {
+      if (drawerAddPanel) drawerAddPanel.style.display = "none";
     });
   }
 
@@ -1899,14 +2149,40 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
+  // ── HÀM XÓA THIẾT BỊ CON KHỎI GATEWAY (ĐỒNG BỘ TRIỆT ĐỂ LOCALSTORAGE & MEMORY) ──
   function removeDeviceFromGateway(devId) {
-    const dev = customDevices.find(d => d.id === devId);
-    const isIr = dev && dev.type === "ir_hub";
-    if (isIr) localStorage.setItem("gate_ir_hub_deleted", "true");
-    customDevices = customDevices.filter(d => d.id !== devId && (!isIr || d.type !== "ir_hub"));
+    const dev = customDevices.find(d => d.id === devId) ||
+                 customDevices.find(d => (devId === "dev_espnow_node_1" || (typeof devId === "string" && (devId.includes("sensor") || devId.includes("espnow")))) && d.type === "sensor");
+    const isIr = (dev && (dev.type === "ir_hub" || dev.id === "dev_ir_hub_hunonic" || (dev.id && dev.id.includes("ir_hub")))) ||
+                 devId === "dev_ir_hub_hunonic" ||
+                 (typeof devId === "string" && devId.includes("ir_hub"));
+    const isSensor = (dev && (dev.type === "sensor" || dev.id === "dev_espnow_node_1" || (dev.id && (dev.id.includes("sensor") || dev.id.includes("espnow"))))) ||
+                     devId === "dev_espnow_node_1" ||
+                     (typeof devId === "string" && (devId.includes("sensor") || devId.includes("espnow")));
+
+    if (isIr) {
+      localStorage.setItem("gate_ir_hub_deleted", "true");
+      foundHub = null;
+      currentHubView = null;
+      currentActiveIrChild = null;
+      closeHubSubView(true);
+    }
+
+    if (isSensor) {
+      localStorage.setItem("gate_sensor_deleted", "true");
+    }
+
+    customDevices = customDevices.filter(d => {
+      if (d.id === devId) return false;
+      if (dev && d.id === dev.id) return false;
+      if (isIr && (d.type === "ir_hub" || d.id === "dev_ir_hub_hunonic" || (d.id && d.id.includes("ir_hub")))) return false;
+      if (isSensor && (d.type === "sensor" || d.id === "dev_espnow_node_1" || (d.id && (d.id.includes("sensor") || d.id.includes("espnow"))))) return false;
+      return true;
+    });
+
     localStorage.setItem("gate_custom_devices", JSON.stringify(customDevices));
     foundHub = getActiveIrHub();
-    if (isIr) { currentHubView = null; currentActiveIrChild = null; closeHubSubView(true); }
+    renderDrawerAvailableDevices();
   }
 
   // Nút "Xóa Thiết Bị Này" ("có xóa thiết bị")
@@ -1926,8 +2202,8 @@ document.addEventListener("DOMContentLoaded", () => {
         const dev = customDevices.find(d => d.id === currentDrawerTarget);
         const devName = dev ? dev.name : "thiết bị";
         if (confirm(`Bạn có chắc chắn muốn xóa [${devName}] khỏi Gateway?`)) {
-          removeDeviceFromGateway(currentDrawerTarget);
-          localStorage.setItem("gate_custom_devices", JSON.stringify(customDevices));
+          const targetId = currentDrawerTarget;
+          removeDeviceFromGateway(targetId);
           closeRightDrawer();
           renderDevices();
           renderLinkedDevicesList();
@@ -1948,7 +2224,6 @@ document.addEventListener("DOMContentLoaded", () => {
         const devName = dev ? dev.name : "thiết bị";
         if (confirm(`Bạn có chắc muốn xóa [${devName}] khỏi Gateway?`)) {
           removeDeviceFromGateway(devId);
-          localStorage.setItem("gate_custom_devices", JSON.stringify(customDevices));
           renderDrawerChildList();
           renderDevices();
           renderLinkedDevicesList();
@@ -2019,13 +2294,14 @@ document.addEventListener("DOMContentLoaded", () => {
     if (!isOnline) {
       return `<span aria-label="Thiết bị mất kết nối" style="display:inline-flex;align-items:center;gap:4px;white-space:nowrap;padding:4px 6px;border-radius:999px;background:#fff7ed;border:1px solid #ffedd5;color:#b45309;font-size:9px;font-weight:600;line-height:1.2;"><span aria-hidden="true" style="width:5px;height:5px;border-radius:50%;background:#f59e0b;flex-shrink:0;"></span>Mất kết nối</span>`;
     }
-    const color = isOnline ? "#00b06f" : "#cbd5e1";
+    const color = isOnline ? "#00b06f" : "#94a3b8";
     return `
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" class="wifi-icon-hunonic ${isOnline ? '' : 'offline'}">
         <path d="M5 12.55a11 11 0 0 1 14.08 0"></path>
         <path d="M1.42 9a16 16 0 0 1 21.16 0"></path>
         <path d="M8.53 16.11a6 6 0 0 1 6.95 0"></path>
         <line x1="12" y1="20" x2="12.01" y2="20" stroke-width="3"></line>
+        ${!isOnline ? `<line x1="2" y1="2" x2="22" y2="22" stroke="#ef4444" stroke-width="2.5"></line>` : ''}
       </svg>
     `;
   }
@@ -2083,7 +2359,7 @@ document.addEventListener("DOMContentLoaded", () => {
       if (actionText) actionText.innerText = "Thêm thiết bị";
       if (actionBtn) {
         actionBtn.onclick = () => {
-          openAddGatewayModal();
+          openGatewayDrawer(true);
         };
       }
       if (gearBtn) {
@@ -2120,7 +2396,29 @@ document.addEventListener("DOMContentLoaded", () => {
       if (headerIcon) headerIcon.innerHTML = `<i class="fa-solid fa-wifi ${isHubOnline ? 'text-green' : 'text-gray'}"></i>`;
       const hubAction = document.getElementById("btn-subview-action");
       if (hubAction) hubAction.disabled = !isHubOnline;
-      const children = (dev && Array.isArray(dev.children)) ? dev.children : [];
+      const children = (dev && dev.children) ? dev.children : [];
+
+      if (children.length === 0) {
+        grid.innerHTML = `
+          <div class="empty-ac-card-wrapper" style="grid-column: 1 / -1; display: flex; justify-content: center; width: 100%; margin: 20px 0;">
+            <div style="max-width: 480px; width: 100%; background: #ffffff; border-radius: 20px; padding: 36px 28px; text-align: center; box-shadow: 0 16px 40px rgba(0, 0, 0, 0.35), 0 2px 8px rgba(0, 0, 0, 0.15); border: 1px solid rgba(226, 232, 240, 0.9);">
+              <div style="width: 64px; height: 64px; border-radius: 50%; background: #ecfdf5; color: #00b06f; display: flex; align-items: center; justify-content: center; font-size: 28px; margin: 0 auto 16px; box-shadow: 0 4px 12px rgba(0, 176, 111, 0.15);">
+                <i class="fa-solid fa-wind"></i>
+              </div>
+              <h3 style="font-size: 18px; font-weight: 700; color: #0f172a; margin: 0 0 8px;">Chưa có thiết bị điều hòa nào</h3>
+              <p style="font-size: 14px; color: #475569; line-height: 1.6; margin: 0 0 22px;">
+                Trạm IR trung tâm hiện chưa có điều hòa con. Bạn có thể thêm thiết bị mới trên ứng dụng Hunonic hoặc bấm nút bên dưới để tạo điều hòa.
+              </p>
+              <div style="display: flex; gap: 12px; justify-content: center; flex-wrap: wrap;">
+                <button type="button" onclick="document.getElementById('btn-subview-action')?.click()" style="display: inline-flex; align-items: center; gap: 8px; background: linear-gradient(135deg, #00b06f, #059669); color: #ffffff; border: none; padding: 11px 22px; border-radius: 12px; font-size: 14px; font-weight: 600; cursor: pointer; box-shadow: 0 4px 14px rgba(0, 176, 111, 0.35); transition: transform 0.15s ease;">
+                  <i class="fa-solid fa-plus-circle"></i> Tạo Custom AC Ngay
+                </button>
+              </div>
+            </div>
+          </div>
+        `;
+        return;
+      }
 
       let html = "";
       children.forEach((child) => {
@@ -2130,7 +2428,7 @@ document.addEventListener("DOMContentLoaded", () => {
         const subClass = isChildOn ? "on" : "";
 
         html += `
-          <div class="hunonic-card subview-ac-card ${isHubOnline ? '' : 'is-offline'}" onclick="${isHubOnline ? `window.handleAcCardClick('${child.id}')` : 'return false'}" aria-disabled="${!isHubOnline}" data-child-id="${child.id}" data-hub-id="${dev.id || 'dev_ir_hub_hunonic'}" title="Bấm vào để mở điều khiển điều hòa">
+          <div class="hunonic-card subview-ac-card ${isHubOnline ? '' : 'is-offline'}" onclick="${isHubOnline ? `window.handleAcCardClick('${child.id}')` : 'return false'}" aria-disabled="${!isHubOnline}" data-child-id="${child.id}" data-hub-id="${dev.id || 'dev_ir_hub_hunonic'}" title="${!isHubOnline ? 'Trạm phát IR chưa cắm điện' : 'Bấm vào để mở điều khiển điều hòa'}">
             <div class="hunonic-card-top" style="pointer-events: none;">
               <div class="ac-indoor-svg">
                 ${getAcUnitSvg(isHubOnline, isChildOn)}
@@ -2139,47 +2437,115 @@ document.addEventListener("DOMContentLoaded", () => {
             </div>
             <div class="hunonic-card-bottom" style="pointer-events: none;">
               <h4 class="hunonic-card-title">${escapeHtml(child.name)}</h4>
-              <p class="hunonic-card-sub ${subClass}" style="${isHubOnline ? '' : 'color:#94a3b8;'}">${statusText}</p>
+              <p class="hunonic-card-sub ${subClass}" style="${!isHubOnline ? 'color: #ef4444; font-weight: 500;' : ''}">${statusText}</p>
             </div>
           </div>
         `;
       });
       grid.innerHTML = html;
     } else if (type === "gateway") {
-      const isIrOnline = isDeviceOnline(foundHub);
-      const hasSensor = Boolean(sensorData.hasData || (sensorData.temp > 0));
+      foundHub = getActiveIrHub();
+      const isIrOnline = foundHub ? isDeviceOnline(foundHub) : false;
       const irChildCount = (foundHub && foundHub.children && foundHub.children.length) || 0;
 
-      grid.innerHTML = `
-        <!-- 1. IR Trung Tâm -->
-        <div class="hunonic-card subview-gw-child" data-gw-action="open_ir_hub" title="Bấm vào để mở các thiết bị điều hòa trong IR">
-          <div class="hunonic-card-top">
-            <div class="hunonic-hex-icon">
-              ${getIrHubHexSvg()}
-            </div>
-            ${getWifiHunonicSvg(isIrOnline)}
-          </div>
-          <div class="hunonic-card-bottom">
-            <h4 class="hunonic-card-title">${escapeHtml(foundHub ? foundHub.name : "IR trung tâm")}</h4>
-            <p class="hunonic-card-sub ${isIrOnline ? 'on' : ''}">${irChildCount} thiết bị đã liên kết</p>
-          </div>
-        </div>
+      // Danh sách các thiết bị con thực tế đã được người dùng quét và thêm vào phòng
+      const isSensorDeleted = localStorage.getItem("gate_sensor_deleted") === "true";
+      const userAddedDevices = customDevices.filter(d => {
+        if (d.type === "ir_hub" || d.id === "dev_ir_hub_hunonic" || (d.id && d.id.includes("ir_hub"))) return false;
+        if (isSensorDeleted && (d.type === "sensor" || d.id === "dev_espnow_node_1" || (d.id && (d.id.includes("sensor") || d.id.includes("espnow"))))) return false;
+        return true;
+      });
 
-        <!-- 2. Node Cảm Biến C3 -->
-        <div class="hunonic-card subview-gw-child" data-gw-action="open_sensor" title="Cảm biến nhiệt độ & độ ẩm">
-          <div class="hunonic-card-top">
-            <div class="hunonic-hex-icon">
-              ${getSensorHexSvg()}
-            </div>
-            ${getWifiHunonicSvg(sensorData.isOnline && isGatewayOnline)}
-          </div>
-          <div class="hunonic-card-bottom">
-            <h4 class="hunonic-card-title">Node Cảm Biến C3</h4>
-            <p class="hunonic-card-sub ${hasSensor ? 'on' : ''}">${sensorData.isOnline && isGatewayOnline ? `${sensorData.temp.toFixed(1)}°C &bull; ${sensorData.hum.toFixed(1)} ${sensorData.hum > 120 ? "hPa" : "%"}` : 'Chờ dữ liệu mới'}${getNodePresenceHtml(sensorData.isOnline && isGatewayOnline)}</p>
-          </div>
-        </div>
+      let extraCardsHtml = "";
+      userAddedDevices.forEach(dev => {
+        const isOnline = isDeviceOnline(dev);
+        let iconSvg = getSensorHexSvg();
+        let subText = "Trực tuyến";
 
-      `;
+        if (dev.type === "sensor") {
+          iconSvg = getSensorHexSvg();
+          if (sensorData.hasData && sensorData.temp > 0) {
+            const val2Unit = sensorData.hum > 120 ? "hPa" : "%";
+            subText = `${sensorData.temp.toFixed(1)}°C &bull; ${sensorData.hum.toFixed(1)} ${val2Unit}`;
+          } else {
+            subText = "ESP-NOW 2.4GHz";
+          }
+        } else if (dev.type === "socket") {
+          const isDevOn = isOnline && dev.state === 1;
+          iconSvg = getRelayHexSvg(isDevOn);
+          subText = isDevOn ? "Đang bật" : "Đang tắt";
+        }
+
+        if (dev.type === "sensor") {
+          subText += `<span style="display:block;">${isOnline ? 'Trực tuyến' : 'Ngoại tuyến'}</span>`;
+          subText += getNodePresenceHtml(isOnline);
+        }
+
+        if (dev.type === "sensor" && !isOnline) subText = "Chờ dữ liệu mới";
+
+        extraCardsHtml += `
+          <div class="hunonic-card subview-gw-child" data-id="${dev.id}" data-gw-action="open_custom_dev" title="${escapeHtml(dev.name)}">
+            <div class="hunonic-card-top">
+              <div class="hunonic-hex-icon">
+                ${iconSvg}
+              </div>
+              ${getWifiHunonicSvg(isOnline)}
+            </div>
+            <div class="hunonic-card-bottom">
+              <h4 class="hunonic-card-title">${escapeHtml(dev.name)}</h4>
+              <p class="hunonic-card-sub ${isOnline ? 'on' : ''}">${subText}</p>
+            </div>
+          </div>
+        `;
+      });
+
+      let irSubCardHtml = "";
+      if (foundHub) {
+        irSubCardHtml = `
+          <!-- 1. IR Trung Tâm -->
+          <div class="hunonic-card subview-gw-child" data-gw-action="open_ir_hub" title="Bấm vào để mở các thiết bị điều hòa trong IR">
+            <div class="hunonic-card-top">
+              <div class="hunonic-hex-icon">
+                ${getIrHubHexSvg()}
+              </div>
+              ${getWifiHunonicSvg(isIrOnline)}
+            </div>
+            <div class="hunonic-card-bottom">
+              <h4 class="hunonic-card-title">${escapeHtml(foundHub.name || "IR trung tâm")}</h4>
+              <p class="hunonic-card-sub ${isIrOnline ? 'on' : ''}">
+                ${isIrOnline ? `Thiết bị con: ${irChildCount}` : `<span style="color:#ef4444;font-weight:600;"><i class="fa-solid fa-power-off"></i> Ngoại tuyến (Chưa cắm điện)</span>`}
+              </p>
+            </div>
+          </div>
+        `;
+      }
+
+      if (!foundHub && userAddedDevices.length === 0) {
+        grid.innerHTML = `
+          <div class="empty-gw-subview-card" style="grid-column: 1 / -1; display: flex; justify-content: center; width: 100%; margin: 20px 0;">
+            <div style="max-width: 480px; width: 100%; background: #ffffff; border-radius: 20px; padding: 36px 28px; text-align: center; box-shadow: 0 16px 40px rgba(0, 0, 0, 0.35), 0 2px 8px rgba(0, 0, 0, 0.15); border: 1px solid rgba(226, 232, 240, 0.9);">
+              <div style="width: 64px; height: 64px; border-radius: 50%; background: #ecfdf5; color: #00b06f; display: flex; align-items: center; justify-content: center; font-size: 28px; margin: 0 auto 16px; box-shadow: 0 4px 12px rgba(0, 176, 111, 0.15);">
+                <i class="fa-solid fa-layer-group"></i>
+              </div>
+              <h3 style="font-size: 18px; font-weight: 700; color: #0f172a; margin: 0 0 8px;">Chưa có thiết bị con nào</h3>
+              <p style="font-size: 14px; color: #475569; line-height: 1.6; margin: 0 0 22px;">
+                Trạm Gateway hiện chưa có thiết bị con nào liên kết. Bấm nút bên dưới để quét và thêm thiết bị con (IR Hub, Cảm biến C3).
+              </p>
+              <div style="display: flex; gap: 12px; justify-content: center; flex-wrap: wrap;">
+                <button type="button" class="btn-empty-add-gw-sub" style="display: inline-flex; align-items: center; gap: 8px; background: linear-gradient(135deg, #00b06f, #059669); color: #ffffff; border: none; padding: 11px 22px; border-radius: 12px; font-size: 14px; font-weight: 600; cursor: pointer; box-shadow: 0 4px 14px rgba(0, 176, 111, 0.35);">
+                  <i class="fa-solid fa-plus-circle"></i> Thêm Thiết Bị Vào Gateway
+                </button>
+              </div>
+            </div>
+          </div>
+        `;
+        const btnAddGwSub = grid.querySelector(".btn-empty-add-gw-sub");
+        if (btnAddGwSub) {
+          btnAddGwSub.addEventListener("click", () => openGatewayDrawer(true));
+        }
+      } else {
+        grid.innerHTML = irSubCardHtml + extraCardsHtml;
+      }
     }
   }
 
@@ -2198,6 +2564,9 @@ document.addEventListener("DOMContentLoaded", () => {
     if (currentHubView) {
       renderSubViewDevices(currentHubView.type, currentHubView.dev);
       if (!foundHub) document.querySelectorAll('[data-gw-action="open_ir_hub"]').forEach(card => card.remove());
+      if (localStorage.getItem("gate_sensor_deleted") === "true" || !customDevices.some(d => d.type === "sensor")) {
+        document.querySelectorAll('.subview-gw-child[data-gw-action="open_sensor"], .subview-gw-child[data-id*="espnow"], .subview-gw-child[data-id*="sensor"]').forEach(card => card.remove());
+      }
       return;
     }
 
@@ -2232,34 +2601,42 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     // 2. KHI ĐÃ THÊM GATEWAY VÀO PHÒNG
+    foundHub = getActiveIrHub();
     const gwName = localStorage.getItem("gate_custom_name") || "Trạm Gateway ESP32-S3";
-    const isIrOnline = isDeviceOnline(foundHub);
+    const isIrOnline = foundHub ? isDeviceOnline(foundHub) : false;
 
     let onCount = 0;
     let offCount = 0;
     let offlineCount = !isGatewayOnline ? 1 : 0;
 
-    // Tính toán số lượng thiết bị Bật / Tắt / Offline
-    if (foundHub && foundHub.children) {
-      foundHub.children.forEach(c => {
-        if (!isIrOnline) {
-          offlineCount++;
-        } else if (c.power === 1 || c.state === 1) {
-          onCount++;
-        } else {
-          offCount++;
-        }
-      });
+    // Trạm IR Hub ngoại tuyến -> tính vào thiết bị mất kết nối CHỈ KHI IR Hub tồn tại
+    if (foundHub) {
+      if (!isIrOnline) {
+        offlineCount++;
+      }
+
+      // Tính toán số lượng thiết bị Bật / Tắt / Offline của IR con
+      if (foundHub.children) {
+        foundHub.children.forEach(c => {
+          if (!isIrOnline) {
+            offlineCount++;
+          } else if (c.power === 1 || c.state === 1) {
+            onCount++;
+          } else {
+            offCount++;
+          }
+        });
+      }
     }
 
-
-    const irChildCount = (foundHub && foundHub.children && foundHub.children.length) || 0;
-    const gwChildCount = (foundHub ? 1 : 0) + (sensorData.hasData ? 1 : 0);
+    const irChildCount = (foundHub && foundHub.children) ? foundHub.children.length : 0;
+    const userAddedDevices = customDevices.filter(d => d.type !== "ir_hub" && d.id !== "dev_ir_hub_hunonic" && !(d.id && d.id.includes("ir_hub")));
+    const gwChildCount = (foundHub ? 1 : 0) + userAddedDevices.length;
 
     // Tạo HTML cho các thiết bị riêng lẻ khác nếu người dùng thêm vào
     let customCardsHtml = "";
     customDevices.forEach((dev) => {
-      if (dev.type === "ir_hub" || dev.id === "dev_ir_hub_hunonic") return; // Đã render riêng
+      if (dev.type === "ir_hub" || dev.id === "dev_ir_hub_hunonic" || (dev.id && dev.id.includes("ir_hub"))) return; // Đã render riêng
 
       const isOnline = isDeviceOnline(dev);
       if (!isOnline) offlineCount++;
@@ -2274,13 +2651,20 @@ document.addEventListener("DOMContentLoaded", () => {
         subText = isOn ? "Đang bật" : "Đang tắt";
       } else if (dev.type === "sensor") {
         iconSvg = getSensorHexSvg();
-        subText = sensorData.temp > 0 ? `${sensorData.temp.toFixed(1)}°C &bull; ${sensorData.hum.toFixed(1)} ${sensorData.hum > 120 ? "hPa" : "%"}` : "ESP-NOW 2.4GHz";
+        if (!isOnline) {
+          subText = `<span style="color:#ef4444;font-weight:600;"><i class="fa-solid fa-power-off"></i> Ngoại tuyến</span>`;
+        } else if (sensorData.temp > 0) {
+          const val2Unit = sensorData.hum > 120 ? "hPa" : "%";
+          subText = `${sensorData.temp.toFixed(1)}°C &bull; ${sensorData.hum.toFixed(1)} ${val2Unit}`;
+        } else {
+          subText = "ESP-NOW 2.4GHz";
+        }
       }
 
       if (dev.type === "sensor") {
-        subText += `<span style="display:block;">${isOnline && sensorData.isOnline ? 'Trực tuyến' : 'Ngoại tuyến'}</span>`;
-        subText += getNodePresenceHtml(isOnline && sensorData.isOnline);
-      }
+          subText += `<span style="display:block;">${isOnline ? 'Trực tuyến' : 'Ngoại tuyến'}</span>`;
+          subText += getNodePresenceHtml(isOnline);
+        }
 
       if (dev.type === "sensor" && !isOnline) subText = "Chờ dữ liệu mới";
 
@@ -2300,6 +2684,27 @@ document.addEventListener("DOMContentLoaded", () => {
       `;
     });
 
+    let irCardHtml = "";
+    if (foundHub) {
+      irCardHtml = `
+        <!-- CARD 2: IR TRUNG TÂM (CHỨA CÁC ĐIỀU HÒA) -->
+        <div class="hunonic-card" id="card-ir-hub-master" data-id="${escapeHtml(foundHub.id)}" title="Bấm vào để mở các thiết bị trong IR">
+          <div class="hunonic-card-top">
+            <div class="hunonic-hex-icon">
+              ${getIrHubHexSvg()}
+            </div>
+            ${getWifiHunonicSvg(isIrOnline)}
+          </div>
+          <div class="hunonic-card-bottom">
+            <h4 class="hunonic-card-title">${escapeHtml(foundHub.name || "IR trung tâm")}</h4>
+            <p class="hunonic-card-sub ${isIrOnline ? 'on' : ''}">
+              ${isIrOnline ? `Thiết bị con: ${irChildCount}` : `<span style="color:#ef4444;font-weight:600;"><i class="fa-solid fa-power-off"></i> Ngoại tuyến (Chưa cắm điện)</span>`}
+            </p>
+          </div>
+        </div>
+      `;
+    }
+
     // RENDER LƯỚI THIẾT BỊ HAY DÙNG CHUẨN HUNONIC (GIỐNG SCREENSHOT 1)
     devicesGrid.innerHTML = `
       <!-- CARD 1: TRẠM GATEWAY ESP32-S3 -->
@@ -2316,22 +2721,7 @@ document.addEventListener("DOMContentLoaded", () => {
         </div>
       </div>
 
-      ${foundHub ? `
-      <!-- CARD 2: IR TRUNG TÂM (CHỨA CÁC ĐIỀU HÒA) -->
-      <div class="hunonic-card" id="card-ir-hub-master" data-id="${foundHub ? foundHub.id : 'dev_ir_hub_hunonic'}" title="Bấm vào để mở các thiết bị trong IR">
-        <div class="hunonic-card-top">
-          <div class="hunonic-hex-icon">
-            ${getIrHubHexSvg()}
-          </div>
-          ${getWifiHunonicSvg(isIrOnline)}
-        </div>
-        <div class="hunonic-card-bottom">
-          <h4 class="hunonic-card-title">${escapeHtml(foundHub ? foundHub.name : "IR trung tâm")}</h4>
-          <p class="hunonic-card-sub ${isIrOnline ? 'on' : ''}">${irChildCount} thiết bị đã liên kết</p>
-        </div>
-      </div>
-
-      ` : ""}
+      ${irCardHtml}
 
       <!-- CÁC THIẾT BỊ RIÊNG KHÁC -->
       ${customCardsHtml}
@@ -2457,14 +2847,7 @@ document.addEventListener("DOMContentLoaded", () => {
       child = hubDev.children.find(c => String(c.id) === String(childId));
     }
     if (!child) {
-      if (String(childId) === "4003248") {
-        child = { id: "4003248", name: "Điều hòa MIRAGE", type: "ac", temp: 25, mode: 1, fan: 0, power: 0, brand: 117 };
-      } else if (String(childId) === "4003318") {
-        child = { id: "4003318", name: "Điều hòa FUNIKI", type: "ac", temp: 26, mode: 1, fan: 0, power: 0, brand: 104 };
-      }
-    }
-    if (!child) {
-      child = { id: String(childId), name: "Điều hòa", type: "ac", temp: 25, mode: 1, fan: 0, power: 0, brand: 104 };
+      return;
     }
     openAcDrawer(child, hubDev);
   };
@@ -2542,20 +2925,9 @@ document.addEventListener("DOMContentLoaded", () => {
         const action = gwChild.getAttribute("data-gw-action");
         if (action === "open_ir_hub") {
           openHubSubView("ir_hub", foundHub, "gateway");
-        } else if (action === "open_sensor") {
-          openChildDeviceDrawer("dev_espnow_node_1");
-        } else if (action === "toggle_relay_1") {
-          const newState = relayStates[1] === 1 ? 0 : 1;
-          relayStates[1] = newState;
-          await callApi("/api/gateway/relay", "POST", { channel: 1, state: newState });
-          renderSubViewDevices("gateway", null);
-          showToast(`Đã ${newState === 1 ? 'BẬT' : 'TẮT'} Công Tắc Relay 1!`, "success");
-        } else if (action === "toggle_relay_2") {
-          const newState = relayStates[2] === 1 ? 0 : 1;
-          relayStates[2] = newState;
-          await callApi("/api/gateway/relay", "POST", { channel: 2, state: newState });
-          renderSubViewDevices("gateway", null);
-          showToast(`Đã ${newState === 1 ? 'BẬT' : 'TẮT'} Công Tắc Relay 2!`, "success");
+        } else if (action === "open_custom_dev" || action === "open_sensor") {
+          const devId = gwChild.getAttribute("data-id") || "dev_espnow_node_1";
+          openChildDeviceDrawer(devId);
         }
         return;
       }
@@ -2707,12 +3079,10 @@ document.addEventListener("DOMContentLoaded", () => {
       acState.power = 1;
       acState.temp = 25;
       acState.mode = 1;
-      relayStates[1] = 1;
       updateAcModalUI();
       renderDevices();
       await callApi("/api/hvac/control", "POST", { power: 1, temp: 25, mode: 1, fan: 0 });
-      await callApi("/api/gateway/relay", "POST", { channel: 1, state: 1 });
-      showToast("Ngữ cảnh Về Nhà đã sẵn sàng (AC 25°C Cool & Đèn Bật)", "success");
+      showToast("Ngữ cảnh Về Nhà đã sẵn sàng (AC 25°C Cool)", "success");
     });
   }
 
@@ -2723,14 +3093,10 @@ document.addEventListener("DOMContentLoaded", () => {
       acState.power = 1;
       acState.temp = 27;
       acState.fan = 1;
-      relayStates[1] = 0;
-      relayStates[2] = 0;
       updateAcModalUI();
       renderDevices();
       await callApi("/api/hvac/control", "POST", { power: 1, temp: 27, mode: 1, fan: 1 });
-      await callApi("/api/gateway/relay", "POST", { channel: 1, state: 0 });
-      await callApi("/api/gateway/relay", "POST", { channel: 2, state: 0 });
-      showToast("Ngữ cảnh Đi Ngủ đã kích hoạt (AC 27°C Quạt êm & Tắt đèn)", "success");
+      showToast("Ngữ cảnh Đi Ngủ đã kích hoạt (AC 27°C Quạt êm)", "success");
     });
   }
 
@@ -2753,13 +3119,9 @@ document.addEventListener("DOMContentLoaded", () => {
       if (acDebounceTimer) { clearTimeout(acDebounceTimer); acDebounceTimer = null; }
       showToast("Kích hoạt ngữ cảnh: TIẾT KIỆM ĐIỆN", "info");
       acState.power = 0;
-      relayStates[1] = 0;
-      relayStates[2] = 0;
       updateAcModalUI();
       renderDevices();
       await callApi("/api/hvac/control", "POST", { power: 0, temp: acState.temp, mode: acState.mode, fan: acState.fan });
-      await callApi("/api/gateway/relay", "POST", { channel: 1, state: 0 });
-      await callApi("/api/gateway/relay", "POST", { channel: 2, state: 0 });
       showToast("Đã tắt toàn bộ thiết bị để tiết kiệm điện", "success");
     });
   }
@@ -2783,27 +3145,10 @@ document.addEventListener("DOMContentLoaded", () => {
   let selectedDeviceType = "espnow";
 
   function openGatewayManageModal(activeTabId = "tab-linked-devices") {
-    if (!gatewayManageModal) return;
-
-    // Cập nhật thông số trạm trong Tab 3
-    const mOnline = document.getElementById("gw-modal-online");
-    const mUptime = document.getElementById("gw-modal-uptime");
-    const mHeap = document.getElementById("gw-modal-heap");
-    const mRssi = document.getElementById("gw-modal-rssi");
-
-    if (mOnline) {
-      mOnline.innerText = isGatewayOnline ? "Online (HiveMQ Cloud TLS)" : "Ngoại tuyến (Standby / Wi-Fi)";
-      mOnline.className = isGatewayOnline ? "t-value text-green" : "t-value";
-    }
-    if (mUptime) mUptime.innerText = formatUptime(gwMetrics.uptime_sec || 0);
-    if (mHeap) mHeap.innerText = (gwMetrics.free_heap > 0 ? (gwMetrics.free_heap / 1024).toFixed(1) : (gwMetrics.heap_kb || "62.1")) + " KB";
-    if (mRssi) mRssi.innerText = (gwMetrics.rssi !== -100 ? `${gwMetrics.rssi} dBm` : "-44 dBm") + " (Dinh)";
-
-    renderLinkedDevicesList();
-    renderDiscoveredDevices();
-    switchGwModalTab(activeTabId);
-    gatewayManageModal.classList.remove("hidden");
+    closeGatewayManageModal();
+    openGatewayDrawer(true);
   }
+  window.openGatewayManageModal = openGatewayManageModal;
 
   function closeGatewayManageModal() {
     if (gatewayManageModal) gatewayManageModal.classList.add("hidden");
@@ -2909,7 +3254,13 @@ document.addEventListener("DOMContentLoaded", () => {
         state: 0
       };
 
-      if (newDev.type === "ir_hub") localStorage.removeItem("gate_ir_hub_deleted");
+      if (selectedDeviceType === "ir_hub") {
+        localStorage.removeItem("gate_ir_hub_deleted");
+        foundHub = newDev;
+      }
+      if (selectedDeviceType === "sensor" || selectedDeviceType === "espnow") {
+        localStorage.removeItem("gate_sensor_deleted");
+      }
       customDevices.push(newDev);
       localStorage.setItem("gate_custom_devices", JSON.stringify(customDevices));
 
@@ -2940,29 +3291,31 @@ document.addEventListener("DOMContentLoaded", () => {
     if (!discList || discList.length === 0) {
       discList = [];
 
-      // 1. Trạm Hồng Ngoại IR Hunonic Smart Pro (chứa các thiết bị con như Điều hòa)
-      const acName = gwMetrics.ac_name || "Điều hoà phòng Hương";
-      const acId = gwMetrics.ac_id || "4000261";
-      discList.push({
-        id: "ir_hub_3987670",
-        name: "IR Hunonic Smart Pro",
-        type: "ir_hub",
-        source: "Hunonic Cloud / IR Smart Pro",
-        device_id: "3987670",
-        online: gwMetrics.ac_online !== undefined ? gwMetrics.ac_online : false,
-        details: `ID: 3987670 • 1 thiết bị IR kết nối • ${gwMetrics.ac_online ? 'Trực tuyến' : 'Ngoại tuyến'}`,
-        children: [
-          {
-            id: acId,
-            name: acName,
-            type: "ac",
-            temp: acState.temp || 25,
-            mode: acState.mode !== undefined ? acState.mode : 2,
-            fan: acState.fan || 0,
-            power: acState.power || 0
-          }
-        ]
-      });
+      // 1. Trạm Hồng Ngoại IR Hunonic Smart Pro: CHỈ HIỆN KHI THỰC SỰ SCAN THẤY TRỰC TUYẾN
+      if (isGatewayOnline && gwMetrics.ac_online === true) {
+        const acName = gwMetrics.ac_name || "Điều hòa IR";
+        const acId = gwMetrics.ac_id || "";
+        discList.push({
+          id: "ir_hub_3987670",
+          name: "IR Hunonic Smart Pro",
+          type: "ir_hub",
+          source: "Hunonic Cloud / IR Smart Pro",
+          device_id: "3987670",
+          online: true,
+          details: `ID: 3987670 • 1 thiết bị IR kết nối • Trực tuyến`,
+          children: [
+            {
+              id: acId,
+              name: acName,
+              type: "ac",
+              temp: acState.temp || 25,
+              mode: acState.mode !== undefined ? acState.mode : 2,
+              fan: acState.fan || 0,
+              power: acState.power || 0
+            }
+          ]
+        });
+      }
 
       // 2. Node Cảm Biến ESP-NOW: CHỈ HIỆN KHI THỰC SỰ CÓ DỮ LIỆU NHẬN ĐƯỢC TỪ NODE C3
       const hasRealSensor = Boolean(
@@ -2977,11 +3330,9 @@ document.addEventListener("DOMContentLoaded", () => {
           source: "ESP-NOW 2.4GHz",
           mac: "30:AE:A4:07:0B:84",
           online: true,
-          details: `Nhiệt độ: ${sensorData.temp.toFixed(1)}°C • ${sensorData.hum > 120 ? "Áp suất" : "Độ ẩm"}: ${sensorData.hum.toFixed(1)} ${sensorData.hum > 120 ? "hPa" : "%"} • Pin: ${sensorData.batt.toFixed(2)}V`
+          details: `Nhiệt độ: ${sensorData.temp.toFixed(1)}°C • ${sensorData.hum > 120 ? 'Áp suất' : 'Độ ẩm'}: ${sensorData.hum.toFixed(1)}${sensorData.hum > 120 ? ' hPa' : '%'} • Pin: ${sensorData.batt.toFixed(2)}V`
         });
       }
-
-
     }
 
     discList = discList.filter(d => d.type !== "relay" && d.type !== "socket");
@@ -3071,9 +3422,15 @@ document.addEventListener("DOMContentLoaded", () => {
           state: 0
         };
 
-        if (newDev.type === "ir_hub") localStorage.removeItem("gate_ir_hub_deleted");
-        if (newDev.type === "ir_hub") localStorage.removeItem("gate_ir_hub_deleted");
-      customDevices.push(newDev);
+        if (type === "ir_hub" || devId === "dev_ir_hub_hunonic" || devId.includes("ir_hub")) {
+          localStorage.removeItem("gate_ir_hub_deleted");
+          foundHub = newDev;
+        }
+
+        if (newDev.type === "sensor" || type === "sensor" || (devId && devId.includes("sensor"))) {
+          localStorage.removeItem("gate_sensor_deleted");
+        }
+        customDevices.push(newDev);
         localStorage.setItem("gate_custom_devices", JSON.stringify(customDevices));
 
         renderDevices();
@@ -3183,7 +3540,6 @@ document.addEventListener("DOMContentLoaded", () => {
         const devName = dev ? dev.name : "thiết bị";
         if (confirm(`Bạn có chắc chắn muốn xóa [${devName}] khỏi Gateway?`)) {
           removeDeviceFromGateway(devId);
-          localStorage.setItem("gate_custom_devices", JSON.stringify(customDevices));
           renderLinkedDevicesList();
           renderDrawerChildList();
           renderDevices();
@@ -3290,13 +3646,40 @@ document.addEventListener("DOMContentLoaded", () => {
         });
       }
 
-      if (d.ac_devices && typeof d.ac_devices === "object") {
-        const hubDev = foundHub || customDevices.find(cd => cd.type === "ir_hub");
+      if (d.ac_count !== undefined) {
+        foundHub = getActiveIrHub();
+        const hubDev = foundHub;
         if (hubDev) {
-          hubDev.children = Object.entries(d.ac_devices).map(([id, ac]) => ({
-            ...ac, id: String(id), type: "ac", name: ac.name || `Điều hòa ${id}`,
-            state: ac.power ?? 0, online: Boolean(isGatewayOnline && d.ac_online)
-          }));
+          if (d.ac_count === 0 || !d.ac_devices || Object.keys(d.ac_devices).length === 0) {
+            hubDev.children = [];
+          } else if (d.ac_devices && typeof d.ac_devices === "object") {
+            const updatedChildren = [];
+            for (const [did, dinfo] of Object.entries(d.ac_devices)) {
+              updatedChildren.push({
+                id: String(did),
+                name: dinfo.name || `Điều hòa ${did}`,
+                type: "ac",
+                brand: dinfo.brand || 0,
+                power: dinfo.power || 0,
+                state: dinfo.power || 0,
+                temp: dinfo.temp || 25,
+                mode: dinfo.mode || 1,
+                fan: dinfo.fan || 0,
+                online: Boolean(dinfo.online && d.ac_online)
+              });
+            }
+            hubDev.children = updatedChildren;
+          }
+          localStorage.setItem("gate_custom_devices", JSON.stringify(customDevices));
+
+          // Nếu đang xem sub-view của IR Hub -> render lại ngay
+          const subViewEl = document.getElementById("view-device-hub");
+          if (subViewEl && subViewEl.style.display !== "none") {
+            const titleEl = document.getElementById("subview-title");
+            if (titleEl && titleEl.innerText === (hubDev.name || "IR trung tâm")) {
+              renderSubViewDevices("ir_hub", hubDev);
+            }
+          }
         }
       }
 
@@ -3307,6 +3690,9 @@ document.addEventListener("DOMContentLoaded", () => {
       renderDevices();
       updateDrawerGatewayTelemetry();
       renderDrawerChildList();
+      if (drawerAddPanel && drawerAddPanel.style.display !== "none") {
+        renderDrawerAvailableDevices();
+      }
 
       // Cập nhật tức thời Drawer Điều Hòa hoặc Trạm IR nếu đang mở
       if (currentActiveIrChild) {
@@ -3346,30 +3732,63 @@ document.addEventListener("DOMContentLoaded", () => {
       renderDevices();
       updateDrawerGatewayTelemetry();
       renderDrawerChildList();
+      if (drawerAddPanel && drawerAddPanel.style.display !== "none") {
+        renderDrawerAvailableDevices();
+      }
     }
 
     // 2. Lấy dữ liệu cảm biến Node ESP-NOW
     const senRes = await callApi("/api/sensors/latest");
     if (senRes && senRes.success && senRes.data) {
       const s = senRes.data;
-      if (s.last_seen) {
+      if (s.last_seen && (s.val1 > 0 || s.val2 > 0 || s.presence !== undefined || s.battery > 0)) {
         sensorData.hasData = true;
-        sensorData.temp = s.val1 ?? 0;
-        sensorData.hum = s.val2 ?? 0;
-        sensorData.batt = s.battery ?? 0;
+        sensorData.temp = s.val1 || 0;
+        sensorData.hum = s.val2 || 0;
+        sensorData.batt = s.battery || 0;
         sensorData.presence = s.presence ?? null;
-        sensorData.isOnline = s.is_online === true;
+        sensorData.lastSeen = s.last_seen;
+
+        // Quy tắc: 1 phút (60s) không thấy node phản hồi mới tính là offline
+        const isNodeOnline = (s.is_online !== undefined) ? Boolean(s.is_online) : (s.seconds_ago !== undefined ? s.seconds_ago <= 60 : true);
+        sensorData.isOnline = isNodeOnline;
         handlePresenceNotification();
 
+        customDevices.forEach(cd => {
+          if (cd.type === "sensor" || cd.id === "dev_espnow_node_1" || (cd.id && cd.id.includes("espnow")) || (cd.name && cd.name.toLowerCase().includes("node cảm biến"))) {
+            cd.online = isNodeOnline;
+          }
+        });
+
         if (weatherTempDisplay) weatherTempDisplay.innerHTML = `${Math.round(Number(sensorData.temp))}<span class="deg-unit">°C</span>`;
-        if (weatherHumDisplay) weatherHumDisplay.innerText = sensorData.hum > 120
-          ? `Áp suất ${Math.round(Number(sensorData.hum))} hPa`
-          : `Độ ẩm ${Math.round(Number(sensorData.hum))}%`;
+        if (weatherHumDisplay) {
+          weatherHumDisplay.innerText = sensorData.hum > 120 ? `Áp suất ${Math.round(Number(sensorData.hum))} hPa` : `Độ ẩm ${Math.round(Number(sensorData.hum))}%`;
+        }
+
+        const presenceDisplay = document.getElementById("weather-presence-display");
+        if (presenceDisplay) {
+          if (sensorData.presence) {
+            presenceDisplay.innerHTML = `<span class="sep">&bull;</span> <span style="color:#10b981; font-weight:600;"><i class="fa-solid fa-person-walking"></i> Có người</span>`;
+          } else {
+            presenceDisplay.innerHTML = `<span class="sep">&bull;</span> <span style="color:#94a3b8;"><i class="fa-solid fa-house-user"></i> Phòng trống</span>`;
+          }
+        }
       } else {
         sensorData.hasData = false;
         sensorData.isOnline = false;
-        sensorData.presence = null;
+        sensorData.temp = 0;
+        sensorData.hum = 0;
+        sensorData.batt = 0;
+        sensorData.presence = 0;
+        customDevices.forEach(cd => {
+          if (cd.type === "sensor" || cd.id === "dev_espnow_node_1" || (cd.id && cd.id.includes("espnow")) || (cd.name && cd.name.toLowerCase().includes("node cảm biến"))) {
+            cd.online = false;
+          }
+        });
+        const presenceDisplay = document.getElementById("weather-presence-display");
+        if (presenceDisplay) presenceDisplay.innerHTML = "";
       }
+
       renderDevices();
     } else {
       sensorData.isOnline = false;

@@ -1252,7 +1252,9 @@ body {
 
 /* ── Add Gateway & Device Scanning Modal ─────────────────────────────────── */
 .add-gateway-card {
-  max-width: 500px;
+  width: 95vw;
+  max-width: 650px;
+  border-radius: 26px;
 }
 
 .scan-gateway-stage {
@@ -1540,34 +1542,58 @@ body {
 }
 
 /* ── BLE Connected Banner & Wi-Fi Picker List ────────────────────────────── */
+.add-gateway-card .modal-header {
+  padding: 22px 28px;
+}
+
+.add-gateway-card .modal-title-col h3 {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #0f172a;
+  letter-spacing: -0.01em;
+}
+
+.add-gateway-card .modal-sub {
+  font-size: 0.85rem;
+  color: #64748b;
+  margin-top: 3px;
+  display: block;
+}
+
+.add-gateway-card .modal-body {
+  padding: 22px 28px 26px;
+}
+
 .ble-connected-banner {
   background: #f0f9ff;
-  border: 1px solid #bae6fd;
-  border-radius: 14px;
-  padding: 12px 16px;
+  border: 1.5px solid #bae6fd;
+  border-radius: 16px;
+  padding: 14px 20px;
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 14px;
   text-align: left;
-  margin-bottom: 16px;
+  margin-bottom: 18px;
   width: 100%;
 }
 
 .ble-connected-banner i {
   color: #0284c7;
-  font-size: 1.6rem;
+  font-size: 1.75rem;
+  flex-shrink: 0;
 }
 
 .ble-banner-info strong {
   color: #0369a1;
-  font-size: 0.92rem;
+  font-size: 0.98rem;
   display: block;
+  font-weight: 700;
 }
 
 .ble-banner-info p {
   color: #0284c7;
-  font-size: 0.78rem;
-  margin: 0;
+  font-size: 0.82rem;
+  margin: 2px 0 0 0;
 }
 
 .wifi-picker-section {
@@ -1579,96 +1605,142 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  font-size: 0.84rem;
+  font-size: 0.95rem;
   font-weight: 700;
-  color: #334155;
-  margin-bottom: 8px;
+  color: #1e293b;
+  margin-bottom: 12px;
 }
 
 .btn-refresh-wifi {
-  background: none;
-  border: 1px solid #e2e8f0;
-  border-radius: 8px;
-  width: 28px;
-  height: 28px;
+  background: #f8fafc;
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  width: 34px;
+  height: 34px;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #64748b;
+  color: #475569;
   cursor: pointer;
+  font-size: 0.95rem;
   transition: all 0.2s;
 }
 
 .btn-refresh-wifi:hover {
   background: #f1f5f9;
   color: var(--hunonic-green);
+  border-color: var(--hunonic-green);
 }
 
 .wifi-scanned-container {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  max-height: 160px;
+  gap: 10px;
+  max-height: 280px;
   overflow-y: auto;
-  padding: 2px;
-  margin-bottom: 16px;
+  padding: 4px;
+  margin-bottom: 18px;
+}
+
+.wifi-scanned-container::-webkit-scrollbar {
+  width: 6px;
+}
+
+.wifi-scanned-container::-webkit-scrollbar-track {
+  background: #f1f5f9;
+  border-radius: 6px;
+}
+
+.wifi-scanned-container::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 6px;
+}
+
+.wifi-scanned-container::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
 }
 
 .wifi-scanned-item {
   background: #f8fafc;
-  border: 1px solid #e2e8f0;
-  border-radius: 12px;
-  padding: 10px 14px;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 12px 18px;
   display: flex;
   align-items: center;
   justify-content: space-between;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .wifi-scanned-item:hover {
   border-color: #0284c7;
   background: #f0f9ff;
+  transform: translateY(-1px);
 }
 
 .wifi-scanned-item.selected {
   border-color: var(--hunonic-green);
   background: #f0fdf4;
-  box-shadow: 0 2px 8px rgba(0, 176, 111, 0.15);
+  box-shadow: 0 4px 12px rgba(0, 176, 111, 0.16);
 }
 
 .wifi-item-left {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
   font-weight: 600;
-  font-size: 0.86rem;
+  font-size: 0.95rem;
   color: #1e293b;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.wifi-item-left i {
+  font-size: 1.15rem;
+}
+
+.wifi-item-ssid {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .wifi-item-left i.wifi-strong { color: #16a34a; }
 .wifi-item-left i.wifi-med { color: #ca8a04; }
+.wifi-item-left i.wifi-weak { color: #94a3b8; }
 
 .wifi-item-right {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
+  flex-shrink: 0;
 }
 
 .wifi-lock-badge {
-  font-size: 0.7rem;
+  font-size: 0.76rem;
   color: #64748b;
   background: #e2e8f0;
-  padding: 2px 6px;
+  padding: 3px 8px;
   border-radius: 6px;
+  font-weight: 500;
 }
 
 .wifi-band-tag {
-  font-size: 0.7rem;
+  font-size: 0.76rem;
   font-weight: 700;
   color: #0284c7;
   background: #e0f2fe;
-  padding: 2px 6px;
+  padding: 3px 8px;
+  border-radius: 6px;
+}
+
+.wifi-band-5g {
+  font-size: 0.74rem;
+  font-weight: 600;
+  color: #94a3b8;
+  background: #f1f5f9;
+  padding: 3px 8px;
   border-radius: 6px;
 }
 
@@ -1680,16 +1752,17 @@ body {
 .wifi-credentials-form {
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  margin-bottom: 18px;
+  gap: 14px;
+  margin-top: 14px;
+  margin-bottom: 22px;
 }
 
 .cred-input-wrap label {
   display: block;
-  font-size: 0.78rem;
+  font-size: 0.86rem;
   font-weight: 700;
-  color: #475569;
-  margin-bottom: 5px;
+  color: #334155;
+  margin-bottom: 6px;
 }
 
 .input-with-icon {
@@ -1700,17 +1773,17 @@ body {
 
 .input-with-icon i {
   position: absolute;
-  left: 14px;
+  left: 16px;
   color: #94a3b8;
-  font-size: 0.88rem;
+  font-size: 1rem;
 }
 
 .input-with-icon input {
   width: 100%;
-  padding: 11px 40px 11px 38px;
+  padding: 13px 44px 13px 44px;
   border: 1.5px solid #cbd5e1;
   border-radius: 12px;
-  font-size: 0.88rem;
+  font-size: 0.95rem;
   font-family: inherit;
   outline: none;
   transition: all 0.2s;
@@ -1724,13 +1797,13 @@ body {
 
 .btn-eye-toggle {
   position: absolute;
-  right: 10px;
+  right: 12px;
   background: none;
   border: none;
   cursor: pointer;
   color: #64748b;
   padding: 6px;
-  font-size: 0.9rem;
+  font-size: 1rem;
 }
 
 .btn-eye-toggle:hover {
@@ -1739,25 +1812,25 @@ body {
 
 .wifi-action-buttons {
   display: flex;
-  gap: 10px;
+  gap: 12px;
   width: 100%;
 }
 
 .btn-ble-send-config {
-  flex: 1;
-  padding: 13px 18px;
+  flex: 1.6;
+  padding: 14px 22px;
   background: linear-gradient(135deg, #00b06f 0%, #008755 100%);
   color: #ffffff;
   border: none;
   border-radius: 12px;
   font-family: var(--font-heading);
   font-weight: 700;
-  font-size: 0.88rem;
+  font-size: 0.95rem;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
+  gap: 10px;
   box-shadow: 0 4px 14px rgba(0, 176, 111, 0.3);
   transition: all 0.2s;
 }
@@ -1765,6 +1838,29 @@ body {
 .btn-ble-send-config:hover {
   transform: translateY(-1px);
   box-shadow: 0 6px 18px rgba(0, 176, 111, 0.4);
+}
+
+.btn-rescan-subtle {
+  flex: 1;
+  padding: 14px 18px;
+  background: #f1f5f9;
+  color: #475569;
+  border: 1px solid #cbd5e1;
+  border-radius: 12px;
+  font-family: var(--font-heading);
+  font-weight: 600;
+  font-size: 0.9rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: all 0.2s;
+}
+
+.btn-rescan-subtle:hover {
+  background: #e2e8f0;
+  color: #0f172a;
 }
 
 /* ── Sending Step Lines ──────────────────────────────────────────────────── */
@@ -2216,6 +2312,13 @@ body {
   transform: translateY(-3px);
   border-color: #00b06f;
   box-shadow: 0 10px 24px rgba(0, 176, 111, 0.12);
+}
+
+.hunonic-card.is-holding {
+  transform: scale(0.96) !important;
+  border-color: #00b06f !important;
+  box-shadow: 0 0 0 3px rgba(0, 176, 111, 0.3) !important;
+  transition: transform 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease !important;
 }
 
 .hunonic-card-top {

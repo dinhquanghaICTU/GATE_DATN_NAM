@@ -11,7 +11,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
   
-  <link rel="stylesheet" href="css/style.css?v=60">
+  <link rel="stylesheet" href="css/style.css?v=71">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 </head>
 <body>
@@ -167,7 +167,9 @@
                 <span>Gió 5.0 km/h</span>
                 <span class="sep">&bull;</span>
                 <span id="weather-hum-display">Độ ẩm 72%</span>
+                <span id="weather-presence-display"></span>
               </div>
+
               <!-- 7-Day Forecast Mini Strip -->
               <div class="weather-forecast-strip">
                 <div class="forecast-day">
@@ -402,6 +404,21 @@
         </div>
         <div class="drawer-child-list" id="drawer-child-list">
           <!-- Render danh sách thiết bị con của Gateway từ app.js -->
+        </div>
+
+        <!-- Khay thêm thiết bị trực tiếp trong drawer (không dùng modal giữa màn hình) -->
+        <div class="drawer-add-panel" id="drawer-add-panel" style="display: none; margin-top: 14px; padding-top: 12px; border-top: 1px dashed #cbd5e1;">
+          <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px;">
+            <span style="font-size: 0.78rem; font-weight: 700; color: #047857; text-transform: uppercase; letter-spacing: 0.5px;">
+              <i class="fa-solid fa-satellite-dish"></i> Thiết bị khả dụng sẵn sàng thêm
+            </span>
+            <button type="button" id="btn-drawer-close-add" style="background: none; border: none; color: #94a3b8; cursor: pointer; font-size: 0.82rem; padding: 2px 6px;" title="Đóng">
+              <i class="fa-solid fa-xmark"></i>
+            </button>
+          </div>
+          <div class="drawer-avail-list" id="drawer-avail-list">
+            <!-- Render danh sách thiết bị khả dụng từ app.js -->
+          </div>
         </div>
       </div>
 
@@ -737,55 +754,9 @@
 
             <!-- List Wi-Fi -->
             <div class="wifi-scanned-container" id="wifi-scanned-container">
-              <div class="wifi-scanned-item selected" data-ssid="QuangHa">
-                <div class="wifi-item-left">
-                  <i class="fa-solid fa-wifi wifi-strong"></i>
-                  <span class="wifi-item-ssid">QuangHa</span>
-                </div>
-                <div class="wifi-item-right">
-                  <span class="wifi-lock-badge"><i class="fa-solid fa-lock"></i> WPA2</span>
-                  <span class="wifi-band-tag">2.4G</span>
-                </div>
-              </div>
-
-              <div class="wifi-scanned-item" data-ssid="ICTU_SMART_HOME_2.4G">
-                <div class="wifi-item-left">
-                  <i class="fa-solid fa-wifi wifi-strong"></i>
-                  <span class="wifi-item-ssid">ICTU_SMART_HOME_2.4G</span>
-                </div>
-                <div class="wifi-item-right">
-                  <span class="wifi-lock-badge"><i class="fa-solid fa-lock"></i> WPA2</span>
-                  <span class="wifi-band-tag">2.4G</span>
-                </div>
-              </div>
-
-              <div class="wifi-scanned-item" data-ssid="Viettel_Home_IoT">
-                <div class="wifi-item-left">
-                  <i class="fa-solid fa-wifi wifi-med"></i>
-                  <span class="wifi-item-ssid">Viettel_Home_IoT</span>
-                </div>
-                <div class="wifi-item-right">
-                  <span class="wifi-lock-badge"><i class="fa-solid fa-lock"></i> WPA2</span>
-                  <span class="wifi-band-tag">2.4G</span>
-                </div>
-              </div>
-
-              <div class="wifi-scanned-item" data-ssid="FPT_Telecom_2.4G">
-                <div class="wifi-item-left">
-                  <i class="fa-solid fa-wifi wifi-med"></i>
-                  <span class="wifi-item-ssid">FPT_Telecom_2.4G</span>
-                </div>
-                <div class="wifi-item-right">
-                  <span class="wifi-lock-badge"><i class="fa-solid fa-lock"></i> WPA2</span>
-                  <span class="wifi-band-tag">2.4G</span>
-                </div>
-              </div>
-
-              <div class="wifi-scanned-item manual-item" data-ssid="">
-                <div class="wifi-item-left">
-                  <i class="fa-solid fa-pen-to-square"></i>
-                  <span class="wifi-item-ssid">Nhập tên Wi-Fi khác (Ẩn danh/Thủ công)...</span>
-                </div>
+              <div class="wifi-scan-loading" style="text-align: center; padding: 28px 12px; color: #64748b;">
+                <i class="fa-solid fa-rotate fa-spin" style="font-size: 26px; color: var(--hunonic-green); margin-bottom: 10px;"></i>
+                <p style="margin: 0; font-size: 14px; font-weight: 600;">Đang quét các mạng Wi-Fi thực tế xung quanh máy tính...</p>
               </div>
             </div>
 
@@ -795,7 +766,7 @@
                 <label>Tên Wi-Fi (SSID nạp vào 0xFF01)</label>
                 <div class="input-with-icon">
                   <i class="fa-solid fa-wifi"></i>
-                  <input type="text" id="ble-wifi-ssid" value="QuangHa" placeholder="Nhập tên Wi-Fi...">
+                  <input type="text" id="ble-wifi-ssid" value="" placeholder="Chọn mạng Wi-Fi ở danh sách trên hoặc tự nhập...">
                 </div>
               </div>
 
@@ -803,7 +774,7 @@
                 <label>Mật Khẩu Wi-Fi (PASS nạp vào 0xFF02)</label>
                 <div class="input-with-icon">
                   <i class="fa-solid fa-key"></i>
-                  <input type="password" id="ble-wifi-pass" value="66668888" placeholder="Nhập mật khẩu Wi-Fi...">
+                  <input type="password" id="ble-wifi-pass" value="" placeholder="Nhập mật khẩu Wi-Fi...">
                   <button type="button" class="btn-eye-toggle" id="btn-toggle-ble-pass" title="Hiện/ẩn mật khẩu">
                     <i class="fa-solid fa-eye" id="pass-eye-icon"></i>
                   </button>
@@ -901,9 +872,9 @@
   </div>
 
   <!-- ==================================================================== -->
-  <!-- MODAL: QUẢN LÝ TRẠM GATEWAY & THÊM THIẾT BỊ MỚI                     -->
+  <!-- MODAL: QUẢN LÝ TRẠM GATEWAY & THÊM THIẾT BỊ MỚI (ẨN HOÀN TOÀN - DÙNG DRAWER) -->
   <!-- ==================================================================== -->
-  <div class="hvac-modal-overlay hidden" id="gateway-manage-modal">
+  <div class="hvac-modal-overlay hidden" id="gateway-manage-modal" style="display: none !important;">
     <div class="gateway-manage-card">
       <div class="modal-header">
         <div class="modal-title-col">
@@ -1099,6 +1070,6 @@
   <!-- Toast Notification Container -->
   <div id="toast-container" class="toast-container"></div>
 
-  <script src="js/app.js?v=60"></script>
+  <script src="js/app.js?v=75"></script>
 </body>
 </html>
