@@ -2323,30 +2323,67 @@ document.addEventListener("DOMContentLoaded", () => {
     if (countDevicesOffline) countDevicesOffline.innerText = offlineCount.toString().padStart(2, '0');
   }
 
-  // ── XỬ LÝ EVENT DELEGATION TRÊN DEVICES GRID (HOME DASHBOARD) ───────────────
+  // Tap opens devices; hold/right-click opens the existing settings drawer.
   if (devicesGrid) {
-    devicesGrid.addEventListener("click", (e) => {
-      // 1. Click vào card Gateway -> Mở Sub-View các thiết bị trong Gateway!
+    let holdTimer = null;
+    let held = false;
+    let startX = 0;
+    let startY = 0;
+    let activePointer = null;
+    const settingsCard = target => target.closest("#card-gateway-master, #card-ir-hub-master");
+    const cancelHold = () => {
+      clearTimeout(holdTimer);
+      holdTimer = null;
+      activePointer = null;
+    };
+    const openSettings = card => {
+      if (card.id === "card-gateway-master") openGatewayDrawer();
+      else openChildDeviceDrawer(foundHub ? foundHub.id : "dev_ir_hub_hunonic");
+    };
+    devicesGrid.addEventListener("pointerdown", e => {
+      cancelHold();
+      held = false;
+      if (!e.isPrimary || e.button !== 0) return;
+      const card = settingsCard(e.target);
+      if (!card) return;
+      startX = e.clientX;
+      startY = e.clientY;
+      activePointer = e.pointerId;
+      holdTimer = setTimeout(() => {
+        held = true;
+        cancelHold();
+        if (navigator.vibrate) navigator.vibrate(30);
+        openSettings(card);
+      }, 500);
+    });
+    devicesGrid.addEventListener("pointermove", e => {
+      if (activePointer === e.pointerId &&
+          (Math.abs(e.clientX - startX) > 10 || Math.abs(e.clientY - startY) > 10)) cancelHold();
+    });
+    window.addEventListener("pointerup", cancelHold);
+    window.addEventListener("pointercancel", cancelHold);
+    window.addEventListener("blur", cancelHold);
+    devicesGrid.addEventListener("contextmenu", e => {
+      const card = settingsCard(e.target);
+      if (!card) return;
+      e.preventDefault();
+      cancelHold();
+      if (!held) openSettings(card);
+      held = true;
+    });
+    devicesGrid.addEventListener("click", e => {
+      if (held) {
+        held = false;
+        e.preventDefault();
+        e.stopPropagation();
+        return;
+      }
       const cardGw = e.target.closest("#card-gateway-master");
-      if (cardGw) {
-        openHubSubView("gateway", null, "home");
-        return;
-      }
-
-      // 2. Click vào card IR trung tâm -> Mở Sub-View các thiết bị trong IR!
+      if (cardGw) { openHubSubView("gateway", null, "home"); return; }
       const cardIr = e.target.closest("#card-ir-hub-master");
-      if (cardIr) {
-        openHubSubView("ir_hub", foundHub, "home");
-        return;
-      }
-
-      // 3. Click vào card thiết bị con khác nếu có trên Home
-      const customCard = e.target.closest(".hunonic-card[data-id]");
-      if (customCard) {
-        const devId = customCard.getAttribute("data-id");
-        openChildDeviceDrawer(devId);
-        return;
-      }
+      if (cardIr) { openHubSubView("ir_hub", foundHub, "home"); return; }
+      const card = e.target.closest(".hunonic-card[data-id]");
+      if (card) openChildDeviceDrawer(card.getAttribute("data-id"));
     });
   }
 
