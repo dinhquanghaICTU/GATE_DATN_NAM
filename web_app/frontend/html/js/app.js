@@ -170,13 +170,18 @@ document.addEventListener("DOMContentLoaded", () => {
   customDevices = customDevices.filter(d => d.type !== "relay" && d.type !== "socket");
   localStorage.setItem("gate_custom_devices", JSON.stringify(customDevices));
 
+  function getActiveIrHub() {
+    if (localStorage.getItem("gate_ir_hub_deleted") === "true") return null;
+    return customDevices.find(d => d.type === "ir_hub" || d.id === "dev_ir_hub_hunonic") || null;
+  }
+
   // ── MIGRATION: Đảm bảo trạm IR trung tâm là thiết bị cha chứa danh sách điều hòa (MIRAGE, FUNIKI)
-  let foundHub = customDevices.find(d => d.type === "ir_hub" || d.id === "dev_ir_hub_hunonic");
+  let foundHub = getActiveIrHub();
   let acItems = customDevices.filter(d => d.type === "ac");
 
   const defaultHunonicChildren = [];
 
-  if (!foundHub) {
+  if (!foundHub && localStorage.getItem("gate_ir_hub_deleted") !== "true") {
     foundHub = {
       id: "dev_ir_hub_hunonic",
       name: "IR trung tâm",
@@ -191,7 +196,7 @@ document.addEventListener("DOMContentLoaded", () => {
     customDevices = customDevices.filter(d => d.type !== "ac");
     customDevices.unshift(foundHub);
     localStorage.setItem("gate_custom_devices", JSON.stringify(customDevices));
-  } else {
+  } else if (foundHub) {
     // Đảm bảo tên hiển thị chuẩn theo giao diện Hunonic: IR trung tâm
     if (!foundHub.name || foundHub.name === "IR Hunonic Smart Pro") {
       foundHub.name = "IR trung tâm";
@@ -1894,6 +1899,16 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
+  function removeDeviceFromGateway(devId) {
+    const dev = customDevices.find(d => d.id === devId);
+    const isIr = dev && dev.type === "ir_hub";
+    if (isIr) localStorage.setItem("gate_ir_hub_deleted", "true");
+    customDevices = customDevices.filter(d => d.id !== devId && (!isIr || d.type !== "ir_hub"));
+    localStorage.setItem("gate_custom_devices", JSON.stringify(customDevices));
+    foundHub = getActiveIrHub();
+    if (isIr) { currentHubView = null; currentActiveIrChild = null; closeHubSubView(true); }
+  }
+
   // Nút "Xóa Thiết Bị Này" ("có xóa thiết bị")
   if (btnDrawerDelete) {
     btnDrawerDelete.addEventListener("click", () => {
@@ -1911,7 +1926,7 @@ document.addEventListener("DOMContentLoaded", () => {
         const dev = customDevices.find(d => d.id === currentDrawerTarget);
         const devName = dev ? dev.name : "thiết bị";
         if (confirm(`Bạn có chắc chắn muốn xóa [${devName}] khỏi Gateway?`)) {
-          customDevices = customDevices.filter(d => d.id !== currentDrawerTarget);
+          removeDeviceFromGateway(currentDrawerTarget);
           localStorage.setItem("gate_custom_devices", JSON.stringify(customDevices));
           closeRightDrawer();
           renderDevices();
@@ -1932,7 +1947,7 @@ document.addEventListener("DOMContentLoaded", () => {
         const dev = customDevices.find(d => d.id === devId);
         const devName = dev ? dev.name : "thiết bị";
         if (confirm(`Bạn có chắc muốn xóa [${devName}] khỏi Gateway?`)) {
-          customDevices = customDevices.filter(d => d.id !== devId);
+          removeDeviceFromGateway(devId);
           localStorage.setItem("gate_custom_devices", JSON.stringify(customDevices));
           renderDrawerChildList();
           renderDevices();
@@ -2178,9 +2193,11 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function renderDevices() {
+    foundHub = getActiveIrHub();
     refreshPresencePanel();
     if (currentHubView) {
       renderSubViewDevices(currentHubView.type, currentHubView.dev);
+      if (!foundHub) document.querySelectorAll('[data-gw-action="open_ir_hub"]').forEach(card => card.remove());
       return;
     }
 
@@ -2299,6 +2316,7 @@ document.addEventListener("DOMContentLoaded", () => {
         </div>
       </div>
 
+      ${foundHub ? `
       <!-- CARD 2: IR TRUNG TÂM (CHỨA CÁC ĐIỀU HÒA) -->
       <div class="hunonic-card" id="card-ir-hub-master" data-id="${foundHub ? foundHub.id : 'dev_ir_hub_hunonic'}" title="Bấm vào để mở các thiết bị trong IR">
         <div class="hunonic-card-top">
@@ -2312,6 +2330,8 @@ document.addEventListener("DOMContentLoaded", () => {
           <p class="hunonic-card-sub ${isIrOnline ? 'on' : ''}">${irChildCount} thiết bị đã liên kết</p>
         </div>
       </div>
+
+      ` : ""}
 
       <!-- CÁC THIẾT BỊ RIÊNG KHÁC -->
       ${customCardsHtml}
@@ -2834,6 +2854,7 @@ document.addEventListener("DOMContentLoaded", () => {
         state: 0
       };
 
+      if (newDev.type === "ir_hub") localStorage.removeItem("gate_ir_hub_deleted");
       customDevices.push(newDev);
       localStorage.setItem("gate_custom_devices", JSON.stringify(customDevices));
 
@@ -2995,7 +3016,9 @@ document.addEventListener("DOMContentLoaded", () => {
           state: 0
         };
 
-        customDevices.push(newDev);
+        if (newDev.type === "ir_hub") localStorage.removeItem("gate_ir_hub_deleted");
+        if (newDev.type === "ir_hub") localStorage.removeItem("gate_ir_hub_deleted");
+      customDevices.push(newDev);
         localStorage.setItem("gate_custom_devices", JSON.stringify(customDevices));
 
         renderDevices();
@@ -3104,7 +3127,7 @@ document.addEventListener("DOMContentLoaded", () => {
         const dev = customDevices.find(d => d.id === devId);
         const devName = dev ? dev.name : "thiết bị";
         if (confirm(`Bạn có chắc chắn muốn xóa [${devName}] khỏi Gateway?`)) {
-          customDevices = customDevices.filter(d => d.id !== devId);
+          removeDeviceFromGateway(devId);
           localStorage.setItem("gate_custom_devices", JSON.stringify(customDevices));
           renderLinkedDevicesList();
           renderDrawerChildList();
