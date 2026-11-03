@@ -2024,7 +2024,7 @@ document.addEventListener("DOMContentLoaded", () => {
         const subClass = isChildOn ? "on" : "";
 
         html += `
-          <div class="hunonic-card subview-ac-card ${isHubOnline ? '' : 'is-offline'}" style="${isHubOnline ? '' : 'opacity:0.65;filter:grayscale(1);cursor:default;'}" onclick="${isHubOnline ? `window.handleAcCardClick('${child.id}')` : 'return false'}" aria-disabled="${!isHubOnline}" data-child-id="${child.id}" data-hub-id="${dev.id || 'dev_ir_hub_hunonic'}" title="Bấm vào để mở điều khiển điều hòa">
+          <div class="hunonic-card subview-ac-card ${isHubOnline ? '' : 'is-offline'}" onclick="${isHubOnline ? `window.handleAcCardClick('${child.id}')` : 'return false'}" aria-disabled="${!isHubOnline}" data-child-id="${child.id}" data-hub-id="${dev.id || 'dev_ir_hub_hunonic'}" title="Bấm vào để mở điều khiển điều hòa">
             <div class="hunonic-card-top" style="pointer-events: none;">
               <div class="ac-indoor-svg">
                 ${getAcUnitSvg(isHubOnline, isChildOn)}
@@ -2174,7 +2174,7 @@ document.addEventListener("DOMContentLoaded", () => {
       }
 
       customCardsHtml += `
-        <div class="hunonic-card" style="${isOnline ? '' : 'opacity:0.65;filter:grayscale(1);'}" data-id="${dev.id}" title="Bấm vào để xem chi tiết">
+        <div class="hunonic-card" data-id="${dev.id}" title="Bấm vào để xem chi tiết">
           <div class="hunonic-card-top">
             <div class="hunonic-hex-icon">
               ${iconSvg}
@@ -2192,7 +2192,7 @@ document.addEventListener("DOMContentLoaded", () => {
     // RENDER LƯỚI THIẾT BỊ HAY DÙNG CHUẨN HUNONIC (GIỐNG SCREENSHOT 1)
     devicesGrid.innerHTML = `
       <!-- CARD 1: TRẠM GATEWAY ESP32-S3 -->
-      <div class="hunonic-card" style="${isGatewayOnline ? '' : 'opacity:0.65;filter:grayscale(1);'}" id="card-gateway-master" title="Bấm vào để xem các thiết bị trong Gateway">
+      <div class="hunonic-card" id="card-gateway-master" title="Bấm vào để xem các thiết bị trong Gateway">
         <div class="hunonic-card-top">
           <div class="hunonic-hex-icon">
             ${getGatewayHexSvg()}
@@ -2206,7 +2206,7 @@ document.addEventListener("DOMContentLoaded", () => {
       </div>
 
       <!-- CARD 2: IR TRUNG TÂM (CHỨA CÁC ĐIỀU HÒA) -->
-      <div class="hunonic-card" style="${isIrOnline ? '' : 'opacity:0.65;filter:grayscale(1);'}" id="card-ir-hub-master" data-id="${foundHub ? foundHub.id : 'dev_ir_hub_hunonic'}" title="Bấm vào để mở các thiết bị trong IR">
+      <div class="hunonic-card" id="card-ir-hub-master" data-id="${foundHub ? foundHub.id : 'dev_ir_hub_hunonic'}" title="Bấm vào để mở các thiết bị trong IR">
         <div class="hunonic-card-top">
           <div class="hunonic-hex-icon">
             ${getIrHubHexSvg()}
