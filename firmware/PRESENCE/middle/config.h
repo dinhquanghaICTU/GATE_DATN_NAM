@@ -18,7 +18,7 @@
 #endif
 
 #ifndef BMP280_I2C_SCL_PIN
-#define BMP280_I2C_SCL_PIN        10
+#define BMP280_I2C_SCL_PIN        9
 #endif
 
 #ifndef SHT30_I2C_SDA_PIN
@@ -52,13 +52,13 @@
 #define RELAY_ACTIVE_LEVEL        1
 
 
-/* Đèn LED trạng thái chuyển sang GPIO 9 (thay thế nút Button) */
+/* Đèn LED trạng thái chuyển sang GPIO 10 (Tránh trùng I2C SCL GPIO 9 của BMP280) */
 #ifndef STATUS_LED_PIN
-#define STATUS_LED_PIN            9
+#define STATUS_LED_PIN            10
 #endif
 
 #ifndef LED_ACTIVE_LEVEL
-#define LED_ACTIVE_LEVEL          0
+#define LED_ACTIVE_LEVEL          1
 #endif
 
 /* Bỏ nút bấm Button */

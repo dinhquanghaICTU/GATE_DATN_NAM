@@ -8,7 +8,7 @@
 static const char *TAG = "HARDWARE_LED";
 
 #ifndef STATUS_LED_PIN
-#define STATUS_LED_PIN 9
+#define STATUS_LED_PIN 10
 #endif
 
 #ifndef LED_ACTIVE_LEVEL
