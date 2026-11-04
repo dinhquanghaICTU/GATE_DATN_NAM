@@ -218,7 +218,7 @@ esp_err_t bmp280_init(void) {
         if (addr == BMP280_I2C_ADDR_PRIM || addr == BMP280_I2C_ADDR_SEC) {
           uint8_t test_id = 0;
           if (i2c_read_regs(addr, BMP280_REG_ID, &test_id, 1) == ESP_OK) {
-            ESP_LOGI(TAG, "✅ [BMP280] Tìm thấy cảm biến tại 0x%02X (Chip ID: 0x%02X, %s)",
+            ESP_LOGI(TAG, "[BMP280] Tim thay cam bien tai 0x%02X (Chip ID: 0x%02X, %s)",
                      addr, test_id, c->desc);
             found_addr = addr;
             found_sda = c->sda;
@@ -236,7 +236,7 @@ esp_err_t bmp280_init(void) {
   }
 
   if (!found_addr) {
-    ESP_LOGW(TAG, "⚠️ [BMP280] Không tìm thấy cảm biến trên SDA=%d, SCL=%d",
+    ESP_LOGW(TAG, "[BMP280] Khong tim thay cam bien tren SDA=%d, SCL=%d",
              BMP280_I2C_SDA_PIN, BMP280_I2C_SCL_PIN);
     if (s_driver_installed) {
       i2c_driver_delete(BMP280_I2C_PORT);

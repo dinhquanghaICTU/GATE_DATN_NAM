@@ -103,9 +103,9 @@ static void on_presence_state_changed(bool is_detected) {
   s_cached_presence = is_detected;
 
   if (is_detected) {
-    ESP_LOGI(TAG, "🚶 [CẢM BIẾN] Phát hiện người! -> Kích hoạt truyền ESP-NOW");
+    ESP_LOGI(TAG, "[CAM BIEN] Phat hien nguoi! -> Kich hoat truyen ESP-NOW");
   } else {
-    ESP_LOGI(TAG, "🌿 [CẢM BIẾN] Phòng trống (Hết thời gian giữ) -> Cập nhật ESP-NOW");
+    ESP_LOGI(TAG, "[CAM BIEN] Phong trong (Het thoi gian giu) -> Cap nhat ESP-NOW");
   }
 
   if (s_trigger_sem) {

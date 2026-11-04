@@ -52,14 +52,14 @@ static void on_esp_now_recv_cb(const esp_now_recv_info_t *recv_info, const uint8
 
   if (len == sizeof(NodeCommand_t)) {
     const NodeCommand_t *cmd = (const NodeCommand_t *)data;
-    ESP_LOGI(TAG, "📥 [NHẬN LỆNH GATEWAY] Cmd ID=%d, Node ID=%d, Param=%lu",
+    ESP_LOGI(TAG, "[CMD RECV] Cmd ID=%d, Node ID=%d, Param=%lu",
              cmd->cmd_id, cmd->node_id, (unsigned long)cmd->param);
 
     if (s_cmd_cb) {
       s_cmd_cb(recv_info->src_addr, cmd);
     }
   } else {
-    ESP_LOGI(TAG, "📥 [NHẬN RAW] %d bytes từ %02X:%02X:%02X:%02X:%02X:%02X",
+    ESP_LOGI(TAG, "[RAW RECV] %d bytes tu %02X:%02X:%02X:%02X:%02X:%02X",
              len, recv_info->src_addr[0], recv_info->src_addr[1], recv_info->src_addr[2],
              recv_info->src_addr[3], recv_info->src_addr[4], recv_info->src_addr[5]);
   }
@@ -158,14 +158,14 @@ esp_err_t esp_now_node_send_telemetry(const uint8_t *gateway_mac, const NodeTele
     s_try_next_channel = false;
   }
 
-  /* In log bản tin gửi đi định dạng cột thẳng hàng, emoji rõ ràng */
-  const char *presence_str = telemetry->presence ? "🚶 CÓ NGƯỜI" : "🌿 TRỐNG   ";
+  /* In log ban tin gui di dinh dang cot thang hang */
+  const char *presence_str = telemetry->presence ? "CO NGUOI" : "TRONG   ";
   if (telemetry->val2 > 150.0f) {
-    ESP_LOGI(TAG, "📤 [TX #%-3lu] 🌡️ %5.2f°C | 💨 %7.2f hPa | %s | 🔋 %.2fV | Kênh %u",
+    ESP_LOGI(TAG, "[TX #%-3lu] Temp: %5.2f C | Press: %7.2f hPa | %s | Bat: %.2fV | CH: %u",
              (unsigned long)telemetry->packet_id, telemetry->val1, telemetry->val2,
              presence_str, telemetry->battery_volt, cur_channel);
   } else {
-    ESP_LOGI(TAG, "📤 [TX #%-3lu] 🌡️ %5.2f°C | 💧 %5.2f%%     | %s | 🔋 %.2fV | Kênh %u",
+    ESP_LOGI(TAG, "[TX #%-3lu] Temp: %5.2f C | Hum: %5.2f%%     | %s | Bat: %.2fV | CH: %u",
              (unsigned long)telemetry->packet_id, telemetry->val1, telemetry->val2,
              presence_str, telemetry->battery_volt, cur_channel);
   }
@@ -175,18 +175,18 @@ esp_err_t esp_now_node_send_telemetry(const uint8_t *gateway_mac, const NodeTele
   if (err != ESP_OK) return err;
 
   if (!s_tx_sem || xSemaphoreTake(s_tx_sem, pdMS_TO_TICKS(500)) != pdTRUE) {
-    ESP_LOGW(TAG, "   └─> ⏱️ Timeout: Không nhận được phản hồi ACK từ Gateway");
+    ESP_LOGW(TAG, "  -> [TIMEOUT] Khong nhan duoc phan hoi ACK tu Gateway");
     return ESP_ERR_TIMEOUT;
   }
 
   s_try_next_channel = (s_last_status != ESP_NOW_SEND_SUCCESS);
   if (s_try_next_channel) {
     uint8_t probe_next = (cur_channel >= 11) ? 1 : (cur_channel + 1);
-    ESP_LOGW(TAG, "   └─> ⚠️ NACK: Gateway chưa nhận -> Lần tới quét Kênh %u", probe_next);
+    ESP_LOGW(TAG, "  -> [NACK] Gateway chua nhan -> Lan toi do Kenh %u", probe_next);
     return ESP_FAIL;
   }
 
-  ESP_LOGI(TAG, "   └─> ✅ ACK: Gateway đã nhận thành công!");
+  ESP_LOGI(TAG, "  -> [ACK] Gateway da nhan thanh cong!");
   return ESP_OK;
 }
 

@@ -26,9 +26,9 @@ static void presence_uart_test_task(void *arg) {
 
       if (state_changed || (data.radar.target_state != 0 && (++counter % 4 == 0))) {
         if (data.radar.target_state == 0) {
-          ESP_LOGI(TAG, "📡 [RADAR] 🌿 Khu vực TRỐNG (Không có mục tiêu)");
+          ESP_LOGI(TAG, "[RADAR] Khu vuc TRONG (Khong co muc tieu)");
         } else {
-          ESP_LOGI(TAG, "📡 [RADAR] %-12s | Cự ly: %3u cm | Động: %2u%% | Tĩnh: %2u%%",
+          ESP_LOGI(TAG, "[RADAR] %-12s | Cu ly: %3u cm | Dong: %2u%% | Tinh: %2u%%",
                    states[data.radar.target_state],
                    data.radar.detection_distance_cm,
                    data.radar.moving_energy,
@@ -63,11 +63,11 @@ void app_main(void) {
   }
 
   ESP_LOGI(TAG, "=========================================================");
-  ESP_LOGI(TAG, "🚀 KHỞI ĐỘNG %s (v%s)", DEVICE_TYPE, FIRMWARE_VERSION);
+  ESP_LOGI(TAG, "KHOI DONG %s (v%s)", DEVICE_TYPE, FIRMWARE_VERSION);
   ESP_LOGI(TAG, "   Node ID: %d | ESP-NOW Channel: %d", NODE_ID, ESP_NOW_WIFI_CHANNEL);
   ESP_LOGI(TAG, "   BMP280 / SHT30 : SDA=GPIO%d, SCL=GPIO%d", BMP280_I2C_SDA_PIN, BMP280_I2C_SCL_PIN);
   ESP_LOGI(TAG, "   LD2410B Radar  : RX=GPIO%d, TX=GPIO%d", PRESENCE_UART_RX_PIN, PRESENCE_UART_TX_PIN);
-  ESP_LOGI(TAG, "   Status LED     : GPIO%d (Sáng 1.5s khi mất sóng)", STATUS_LED_PIN);
+  ESP_LOGI(TAG, "   Status LED     : GPIO%d (Sang 1.5s khi mat ket noi)", STATUS_LED_PIN);
   ESP_LOGI(TAG, "=========================================================");
 
   ESP_ERROR_CHECK(presence_controller_init());
@@ -78,6 +78,6 @@ void app_main(void) {
     ESP_LOGE(TAG, "Cannot create LD2410B test task");
   }
 
-  ESP_LOGI(TAG, "✨ Node Cảm biến Hiện diện & Môi trường đã sẵn sàng hoạt động!");
+  ESP_LOGI(TAG, "Node Cam bien Hien dien & Moi truong da san sang hoat dong!");
 }
 
