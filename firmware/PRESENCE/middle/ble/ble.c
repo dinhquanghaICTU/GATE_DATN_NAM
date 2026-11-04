@@ -287,3 +287,4 @@ esp_err_t ble_node_deinit(void) {
   }
   return ESP_FAIL;
 }
+

@@ -48,3 +48,4 @@ esp_err_t nvs_load_interval(uint32_t *interval_ms) {
   nvs_close(handle);
   return err;
 }
+

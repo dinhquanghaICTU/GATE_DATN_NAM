@@ -59,6 +59,11 @@ void button_task(void *pvParam) {
 }
 
 esp_err_t button_init(void) {
+  if (BUTTON_PIN < 0) {
+    ESP_LOGI(TAG, "Nút bấm bị vô hiệu hóa (BUTTON_PIN < 0) để giải phóng GPIO 9 cho I2C SCL.");
+    return ESP_OK;
+  }
+
   static app_btn_hw_config_t hw_btn = {
       .pin = BUTTON_PIN,
       .idle_level = 1,
@@ -89,7 +94,11 @@ void button_task_stop(void) {
 }
 
 void button_task_start(void) {
+  if (BUTTON_PIN < 0) {
+    return;
+  }
   if (s_btn_task_handle == NULL) {
     xTaskCreate(button_task, "button_task", 3072, NULL, 5, NULL);
   }
 }
+

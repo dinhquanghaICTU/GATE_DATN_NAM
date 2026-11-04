@@ -1,13 +1,19 @@
 idf_component_register(
     SRCS 
         "flash/flash.c"
+        "wifi/wifi.c"
         "ble/ble.c"
     INCLUDE_DIRS 
         "flash"
+        "wifi"
         "ble"
         "."
     REQUIRES 
         nvs_flash
         esp_timer
+        esp_wifi
+        esp_netif
+        esp_event
         bt
 )
+

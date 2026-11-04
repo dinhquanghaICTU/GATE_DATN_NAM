@@ -8,4 +8,6 @@ idf_component_register(
         middle
         driver
         nvs_flash
+        app_update
 )
+

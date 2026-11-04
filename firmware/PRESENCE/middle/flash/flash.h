@@ -19,4 +19,5 @@ esp_err_t nvs_load_interval(uint32_t *interval_ms);
 }
 #endif
 
-#endif // __FLASH_H__
+#endif
+

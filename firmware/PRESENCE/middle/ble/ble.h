@@ -37,4 +37,4 @@ esp_err_t ble_node_deinit(void);
 }
 #endif
 
-#endif // __BLE_H__
+#endif
