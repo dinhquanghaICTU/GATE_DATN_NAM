@@ -3,7 +3,6 @@
 #include "bmp280.h"
 #include "SHT30.h"
 #include "led.h"
-#include "relay.h"
 #include "presence_sensor.h"
 #include "wifi.h"
 #include "esp_now_node.h"
@@ -105,14 +104,8 @@ static void on_presence_state_changed(bool is_detected) {
 
   if (is_detected) {
     ESP_LOGI(TAG, "🚶 [CẢM BIẾN] Phát hiện người! -> Kích hoạt truyền ESP-NOW");
-    if (relay_get_auto_mode()) {
-      relay_turn_on();
-    }
   } else {
     ESP_LOGI(TAG, "🌿 [CẢM BIẾN] Phòng trống (Hết thời gian giữ) -> Cập nhật ESP-NOW");
-    if (relay_get_auto_mode()) {
-      relay_turn_off();
-    }
   }
 
   if (s_trigger_sem) {
@@ -137,22 +130,10 @@ static void on_esp_now_command_received(const uint8_t *src_mac, const NodeComman
     break;
 
   case NODE_CMD_RELAY_OFF:
-    relay_turn_off();
-    presence_controller_trigger_telemetry();
-    break;
-
   case NODE_CMD_RELAY_ON:
-    relay_turn_on();
-    presence_controller_trigger_telemetry();
-    break;
-
   case NODE_CMD_RELAY_TOGGLE:
-    relay_toggle();
-    presence_controller_trigger_telemetry();
-    break;
-
   case NODE_CMD_SET_AUTO_RELAY:
-    relay_set_auto_mode(cmd->param != 0);
+    ESP_LOGW(TAG, "-> Bỏ qua lệnh Relay: Node này không trang bị Relay!");
     break;
 
   case NODE_CMD_REQ_TELEMETRY:
@@ -201,8 +182,6 @@ esp_err_t presence_controller_init(void) {
   led_init();
   xTaskCreate(led_task, "led_task", 2048, NULL, 4, NULL);
   led_set_espnow_connected(false);
-
-  relay_init();
 
   esp_err_t bmp_err = bmp280_init();
   if (bmp_err == ESP_OK) {

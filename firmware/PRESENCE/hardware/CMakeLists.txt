@@ -6,7 +6,6 @@ idf_component_register(
         "bmp280/bmp280.c"
         "presence_sensor/presence_sensor.c"
         "presence_sensor/ld2410_parser.c"
-        "relay/relay.c"
         "esp_now_node/esp_now_node.c"
     INCLUDE_DIRS 
         "led"
@@ -14,7 +13,6 @@ idf_component_register(
         "SHT30"
         "bmp280"
         "presence_sensor"
-        "relay"
         "esp_now_node"
         "."
     REQUIRES 

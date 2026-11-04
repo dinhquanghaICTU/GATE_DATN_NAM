@@ -46,13 +46,6 @@
 #define PRESENCE_UART_TIMEOUT_MS  2000
 #define PRESENCE_HOLD_OFF_MS      4000
 
-#ifndef RELAY_PIN
-#define RELAY_PIN                 3
-#endif
-#define RELAY_ACTIVE_LEVEL        1
-
-
-/* Đèn LED trạng thái chuyển sang GPIO 10 (Tránh trùng I2C SCL GPIO 9 của BMP280) */
 #ifndef STATUS_LED_PIN
 #define STATUS_LED_PIN            10
 #endif
@@ -65,8 +58,6 @@
 #ifndef BUTTON_PIN
 #define BUTTON_PIN                -1
 #endif
-
-#define AUTO_RELAY_DEFAULT_ENABLE true
 
 #endif
 

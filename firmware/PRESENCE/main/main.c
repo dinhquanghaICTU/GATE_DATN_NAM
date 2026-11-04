@@ -67,7 +67,7 @@ void app_main(void) {
   ESP_LOGI(TAG, "   Node ID: %d | ESP-NOW Channel: %d", NODE_ID, ESP_NOW_WIFI_CHANNEL);
   ESP_LOGI(TAG, "   BMP280 / SHT30 : SDA=GPIO%d, SCL=GPIO%d", BMP280_I2C_SDA_PIN, BMP280_I2C_SCL_PIN);
   ESP_LOGI(TAG, "   LD2410B Radar  : RX=GPIO%d, TX=GPIO%d", PRESENCE_UART_RX_PIN, PRESENCE_UART_TX_PIN);
-  ESP_LOGI(TAG, "   Relay Tải Đèn  : GPIO%d | Status LED: GPIO%d", RELAY_PIN, STATUS_LED_PIN);
+  ESP_LOGI(TAG, "   Status LED     : GPIO%d (Sáng 1.5s khi mất sóng)", STATUS_LED_PIN);
   ESP_LOGI(TAG, "=========================================================");
 
   ESP_ERROR_CHECK(presence_controller_init());
