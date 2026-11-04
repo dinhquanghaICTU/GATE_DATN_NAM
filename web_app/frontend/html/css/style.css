@@ -5034,3 +5034,640 @@ body {
 }
 
 
+
+/* ==============================================================================
+   CẬP NHẬT FIRMWARE OTA (ESP32-S3 & NODE C3) - GIAO DIỆN CHUYÊN NGHIỆP
+   ============================================================================== */
+.ota-status-cards-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 16px;
+  margin-bottom: 22px;
+}
+
+.ota-dev-card {
+  background: #ffffff;
+  border-radius: 16px;
+  border: 1.5px solid #e2e8f0;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.03);
+  padding: 18px 20px;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  cursor: pointer;
+}
+
+.ota-dev-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0, 176, 111, 0.08);
+  border-color: #cbd5e1;
+}
+
+.ota-dev-card.ota-dev-card-active {
+  border-color: var(--hunonic-green);
+  box-shadow: 0 0 0 2px rgba(0, 176, 111, 0.18), 0 8px 24px rgba(0, 176, 111, 0.08);
+}
+
+.ota-dev-card-header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 14px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.ota-dev-card-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.25rem;
+  color: #ffffff;
+  flex-shrink: 0;
+}
+
+.ota-icon-s3 {
+  background: linear-gradient(135deg, #00b06f 0%, #059669 100%);
+  box-shadow: 0 4px 12px rgba(0, 176, 111, 0.3);
+}
+
+.ota-icon-c3 {
+  background: linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%);
+  box-shadow: 0 4px 12px rgba(139, 92, 246, 0.3);
+}
+
+.ota-dev-card-title-box {
+  flex: 1;
+  min-width: 0;
+}
+
+.ota-dev-card-name {
+  font-size: 0.98rem;
+  font-weight: 700;
+  color: #0f172a;
+  margin: 0;
+}
+
+.ota-dev-card-sub {
+  font-size: 0.74rem;
+  color: #64748b;
+  display: block;
+  margin-top: 2px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ota-dev-specs-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+}
+
+.ota-spec-item {
+  background: #f8fafc;
+  padding: 8px 12px;
+  border-radius: 10px;
+  border: 1px solid #f1f5f9;
+  display: flex;
+  flex-direction: column;
+}
+
+.spec-label {
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  margin-bottom: 2px;
+}
+
+.spec-value {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: #1e293b;
+}
+
+.spec-value.font-mono {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
+/* ── Main Grid 2 Cột ──────────────────────────────────────────────────────── */
+.ota-main-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+
+@media (max-width: 992px) {
+  .ota-main-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.ota-card-panel {
+  background: #ffffff;
+  border-radius: 18px;
+  border: 1.5px solid #e2e8f0;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04);
+  padding: 22px 24px;
+  display: flex;
+  flex-direction: column;
+}
+
+.ota-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 18px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.ota-panel-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.ota-badge-pill {
+  padding: 4px 10px;
+  background: #ecfdf5;
+  color: #059669;
+  border: 1px solid #a7f3d0;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+}
+
+/* Target Selector */
+.ota-field-label {
+  display: block;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #334155;
+  margin-bottom: 8px;
+}
+
+.ota-target-selector {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+}
+
+.ota-target-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border-radius: 12px;
+  border: 1.5px solid #e2e8f0;
+  background: #f8fafc;
+  color: #475569;
+  font-size: 0.84rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.ota-target-btn input {
+  display: none;
+}
+
+.ota-target-btn:hover {
+  background: #f1f5f9;
+  border-color: #cbd5e1;
+}
+
+.ota-target-btn.active {
+  background: #ecfdf5;
+  color: #047857;
+  border-color: var(--hunonic-green);
+  box-shadow: 0 2px 8px rgba(0, 176, 111, 0.15);
+}
+
+/* Method Switcher Tabs */
+.ota-method-switcher {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+  padding: 4px;
+  background: #f1f5f9;
+  border-radius: 12px;
+}
+
+.ota-tab-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border: none;
+  background: transparent;
+  color: #64748b;
+  font-size: 0.82rem;
+  font-weight: 600;
+  border-radius: 9px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.ota-tab-btn.active {
+  background: #ffffff;
+  color: #0f172a;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+/* Dropzone Box */
+.ota-dropzone-box {
+  border: 2px dashed #cbd5e1;
+  border-radius: 16px;
+  background: #f8fafc;
+  padding: 24px 16px;
+  text-align: center;
+  transition: all 0.25s ease;
+  position: relative;
+  cursor: pointer;
+}
+
+.ota-dropzone-box:hover,
+.ota-dropzone-box.dragover {
+  border-color: var(--hunonic-green);
+  background: rgba(0, 176, 111, 0.04);
+}
+
+.ota-dropzone-icon {
+  width: 52px;
+  height: 52px;
+  margin: 0 auto 12px;
+  border-radius: 50%;
+  background: rgba(0, 176, 111, 0.1);
+  color: var(--hunonic-green);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.4rem;
+}
+
+.ota-dropzone-text strong {
+  display: block;
+  font-size: 0.92rem;
+  color: #1e293b;
+  margin-bottom: 4px;
+}
+
+.ota-dropzone-text span {
+  font-size: 0.78rem;
+  color: #64748b;
+}
+
+.btn-ota-browse {
+  margin-top: 14px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 16px;
+  border-radius: 9px;
+  border: 1px solid #cbd5e1;
+  background: #ffffff;
+  color: #334155;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-ota-browse:hover {
+  background: #f1f5f9;
+  border-color: #94a3b8;
+}
+
+/* Selected File Box */
+.ota-file-selected {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  background: #ffffff;
+  border-radius: 12px;
+  border: 1px solid #a7f3d0;
+  box-shadow: 0 2px 8px rgba(0, 176, 111, 0.08);
+}
+
+.ota-file-icon-box {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  background: #ecfdf5;
+  color: #059669;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.15rem;
+  flex-shrink: 0;
+}
+
+.ota-file-details {
+  flex: 1;
+  text-align: left;
+  min-width: 0;
+}
+
+.ota-file-name {
+  font-size: 0.86rem;
+  font-weight: 700;
+  color: #0f172a;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ota-file-size {
+  font-size: 0.74rem;
+  color: #64748b;
+}
+
+.btn-ota-clear-file {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  border: none;
+  background: #fee2e2;
+  color: #dc2626;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s;
+}
+
+.btn-ota-clear-file:hover {
+  background: #fca5a5;
+}
+
+/* Text Inputs */
+.ota-text-input {
+  width: 100%;
+  padding: 10px 14px;
+  border-radius: 11px;
+  border: 1.5px solid #cbd5e1;
+  background: #ffffff;
+  color: #0f172a;
+  font-size: 0.88rem;
+  font-family: inherit;
+  box-sizing: border-box;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.ota-text-input:focus {
+  outline: none;
+  border-color: var(--hunonic-green);
+  box-shadow: 0 0 0 3px rgba(0, 176, 111, 0.15);
+}
+
+.btn-ota-submit {
+  width: 100%;
+  margin-top: 18px;
+  padding: 12px 18px;
+  border-radius: 12px;
+  border: none;
+  background: linear-gradient(135deg, #00b06f 0%, #059669 100%);
+  color: #ffffff;
+  font-size: 0.92rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(0, 176, 111, 0.35);
+  transition: all 0.2s;
+}
+
+.btn-ota-submit:hover {
+  background: linear-gradient(135deg, #00965e 0%, #047857 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 18px rgba(0, 176, 111, 0.4);
+}
+
+.btn-ota-submit:active {
+  transform: translateY(1px);
+}
+
+.btn-ota-submit:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+/* ── Right Column: Progress Card & Terminal ──────────────────────────────── */
+.ota-status-pill {
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.ota-status-idle {
+  background: #f1f5f9;
+  color: #64748b;
+  border: 1px solid #e2e8f0;
+}
+
+.ota-status-running {
+  background: #ecfdf5;
+  color: #059669;
+  border: 1px solid #a7f3d0;
+  animation: pulseOtaBadge 1.5s infinite;
+}
+
+.ota-status-failed {
+  background: #fef2f2;
+  color: #dc2626;
+  border: 1px solid #fecaca;
+}
+
+@keyframes pulseOtaBadge {
+  0% { opacity: 1; }
+  50% { opacity: 0.6; }
+  100% { opacity: 1; }
+}
+
+.ota-progress-card {
+  background: #f8fafc;
+  border-radius: 14px;
+  border: 1px solid #e2e8f0;
+  padding: 16px;
+  margin-bottom: 16px;
+}
+
+.ota-progress-top-info {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.ota-progress-title-text {
+  font-size: 0.84rem;
+  font-weight: 700;
+  color: #1e293b;
+}
+
+.ota-progress-pct-val {
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: var(--hunonic-green);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
+.ota-progress-track {
+  width: 100%;
+  height: 12px;
+  background: #e2e8f0;
+  border-radius: 999px;
+  overflow: hidden;
+  position: relative;
+}
+
+.ota-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #00b06f 0%, #10b981 100%);
+  border-radius: 999px;
+  transition: width 0.3s ease;
+  background-size: 30px 30px;
+  background-image: linear-gradient(
+    45deg,
+    rgba(255, 255, 255, 0.25) 25%,
+    transparent 25%,
+    transparent 50%,
+    rgba(255, 255, 255, 0.25) 50%,
+    rgba(255, 255, 255, 0.25) 75%,
+    transparent 75%,
+    transparent
+  );
+  animation: moveStripe 1s linear infinite;
+}
+
+@keyframes moveStripe {
+  from { background-position: 0 0; }
+  to { background-position: 30px 0; }
+}
+
+.ota-progress-sub-info {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 8px;
+  font-size: 0.74rem;
+  color: #64748b;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
+/* Live Terminal Console */
+.ota-terminal-section {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 16px;
+}
+
+.ota-terminal-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.ota-terminal-title {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #475569;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.btn-ota-clear-log {
+  border: none;
+  background: transparent;
+  color: #94a3b8;
+  font-size: 0.74rem;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.btn-ota-clear-log:hover {
+  color: #475569;
+}
+
+.ota-terminal-console {
+  background: #090d16;
+  border-radius: 12px;
+  padding: 12px 14px;
+  min-height: 140px;
+  max-height: 190px;
+  overflow-y: auto;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.75rem;
+  line-height: 1.5;
+  box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.4);
+}
+
+.term-entry {
+  margin-bottom: 4px;
+  word-break: break-all;
+}
+
+.term-entry.term-info {
+  color: #94a3b8;
+}
+
+.term-entry.term-success {
+  color: #34d399;
+}
+
+.term-entry.term-warn {
+  color: #fbbf24;
+}
+
+.term-entry.term-error {
+  color: #f87171;
+}
+
+/* Safety Notice Box */
+.ota-safety-notice {
+  background: #fffbeb;
+  border-radius: 12px;
+  border: 1px solid #fde68a;
+  padding: 12px 14px;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.safety-notice-icon {
+  color: #d97706;
+  font-size: 1.15rem;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.safety-notice-body {
+  font-size: 0.76rem;
+  color: #92400e;
+  line-height: 1.45;
+}

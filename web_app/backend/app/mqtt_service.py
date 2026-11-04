@@ -34,7 +34,16 @@ latest_gateway_status = {
     "ac_offline_reason": "Chưa nhận được dữ liệu từ Gateway",
     "ac_hub_state": "2",
     "total_node_pkts": 0,
-    "fw_ver": "1.0.0"
+    "fw_ver": "1.0.0",
+    "ota": {
+        "status": "idle",
+        "percent": 0,
+        "bytes": 0,
+        "total": 0,
+        "target": "esp32s3_gate",
+        "message": "Sẵn sàng",
+        "updated_at": None
+    }
 }
 
 latest_sensor_data = {
@@ -267,6 +276,21 @@ def on_message(client, userdata, msg):
                     latest_gateway_status["ac_fan"] = dev_entry["fan"]
                     latest_gateway_status["ac_brand"] = dev_entry["brand"]
 
+            elif evt == "ota_progress":
+                latest_gateway_status["online"] = True
+                latest_gateway_status["last_seen"] = now.isoformat()
+                latest_gateway_status["ota"] = {
+                    "status": data.get("status", "in_progress"),
+                    "percent": data.get("percent", 0),
+                    "bytes": data.get("bytes", 0),
+                    "total": data.get("total", 0),
+                    "target": data.get("target", "esp32s3_gate"),
+                    "error": data.get("error", ""),
+                    "message": data.get("message", ""),
+                    "updated_at": now.isoformat()
+                }
+                logger.info(f"[OTA PROGRESS] {data.get('percent')}% - Status: {data.get('status')}")
+
         # 2. Nhận dữ liệu cảm biến Node ESP-NOW
         elif topic == settings.TOPIC_GATE_TELEMETRY or "node_id" in data:
             latest_sensor_data.update({
@@ -312,6 +336,21 @@ def publish_command(cmd_dict: dict) -> bool:
         return res.rc == mqtt.MQTT_ERR_SUCCESS
     except Exception as e:
         logger.error(f"Lỗi publish MQTT command: {e}")
+        return False
+
+def publish_ota_command(cmd_dict: dict) -> bool:
+    """Gửi bản tin JSON cập nhật firmware OTA tới Gateway qua TOPIC_GATE_OTA và TOPIC_GATE_COMMAND"""
+    global mqtt_client
+    if not mqtt_client:
+        return False
+    try:
+        payload = json.dumps(cmd_dict)
+        res_ota = mqtt_client.publish(settings.TOPIC_GATE_OTA, payload, qos=1)
+        res_cmd = mqtt_client.publish(settings.TOPIC_GATE_COMMAND, payload, qos=1)
+        logger.info(f"Đã phát lệnh OTA -> [{settings.TOPIC_GATE_OTA}] & [{settings.TOPIC_GATE_COMMAND}]: {payload}")
+        return (res_ota.rc == mqtt.MQTT_ERR_SUCCESS) or (res_cmd.rc == mqtt.MQTT_ERR_SUCCESS)
+    except Exception as e:
+        logger.error(f"Lỗi publish OTA command: {e}")
         return False
 
 def start_mqtt_client():

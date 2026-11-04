@@ -67,6 +67,10 @@
           <i class="fa-regular fa-bell nav-icon"></i>
           <span>Thông báo</span>
         </a>
+        <a href="javascript:void(0)" class="nav-item" id="nav-firmware">
+          <i class="fa-solid fa-cloud-arrow-up nav-icon"></i>
+          <span>Cập nhật Firmware</span>
+        </a>
 
         <div class="nav-divider"></div>
 
@@ -327,6 +331,269 @@
 
           <div class="subview-devices-grid" id="subview-devices-grid">
             <!-- Render động danh sách các thẻ điều hòa / thiết bị con phong cách Hunonic -->
+          </div>
+        </div>
+
+        <!-- ================================================================ -->
+        <!-- SUB-VIEW CHI TIẾT: CẬP NHẬT FIRMWARE TỪ XA QUA CLOUD (OTA)       -->
+        <!-- ================================================================ -->
+        <div id="view-firmware-update" class="hunonic-subview view-firmware-update" style="display: none;">
+          <!-- Top Header Bar -->
+          <div class="subview-header-bar">
+            <div class="subview-header-left">
+              <button type="button" class="btn-subview-back" id="btn-ota-back" title="Quay lại Trang chủ">
+                <i class="fa-solid fa-arrow-left"></i>
+              </button>
+              <div class="subview-title-group">
+                <span id="ota-header-icon-box" style="display: inline-flex; align-items: center; justify-content: center; width: 34px; height: 34px; border-radius: 9px; background: rgba(0, 176, 111, 0.12); color: #00b06f; font-size: 1.15rem;">
+                  <i class="fa-solid fa-cloud-arrow-up"></i>
+                </span>
+                <div>
+                  <h3 class="subview-title" style="margin: 0; font-size: 1.15rem;">Cập Nhật Firmware (OTA)</h3>
+                  <div style="font-size: 0.78rem; color: #64748b; font-weight: 500;">Nâng cấp không dây cho Trạm Gateway ESP32-S3 &amp; Node ESP-NOW &bull; Dual Boot Rollback</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="subview-header-right">
+              <button type="button" class="btn-subview-action" id="btn-ota-refresh" title="Làm mới trạng thái">
+                <i class="fa-solid fa-arrows-rotate" id="ota-refresh-icon"></i> <span>Làm mới</span>
+              </button>
+              <button type="button" class="btn-subview-gear" id="btn-ota-reboot" title="Khởi động lại Gateway từ xa" style="color: #ef4444;">
+                <i class="fa-solid fa-power-off"></i>
+              </button>
+            </div>
+          </div>
+
+          <!-- 1. Grid Card Thông Tin Thiết Bị Hiện Tại -->
+          <div class="ota-status-cards-row">
+            <!-- Card 1: Trạm Gateway ESP32-S3 -->
+            <div class="ota-dev-card ota-dev-card-active" id="ota-card-gw" data-target="esp32s3_gate">
+              <div class="ota-dev-card-header">
+                <div class="ota-dev-card-icon ota-icon-s3">
+                  <i class="fa-solid fa-server"></i>
+                </div>
+                <div class="ota-dev-card-title-box">
+                  <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
+                    <h4 class="ota-dev-card-name">Trạm Gateway ESP32-S3</h4>
+                    <span class="gate-status-pill online" id="ota-gw-status-badge">Trực tuyến</span>
+                  </div>
+                  <span class="ota-dev-card-sub">Xtensa LX7 Dual-Core &bull; Flash 16MB &bull; PSRAM 8MB</span>
+                </div>
+              </div>
+              <div class="ota-dev-specs-grid">
+                <div class="ota-spec-item">
+                  <span class="spec-label">Phiên bản Firmware</span>
+                  <span class="spec-value text-green font-mono" id="ota-gw-ver-val">v1.0.0</span>
+                </div>
+                <div class="ota-spec-item">
+                  <span class="spec-label">Phân vùng Flash</span>
+                  <span class="spec-value font-mono">ota_0 (Active)</span>
+                </div>
+                <div class="ota-spec-item">
+                  <span class="spec-label">Thời gian chạy (Uptime)</span>
+                  <span class="spec-value" id="ota-gw-uptime-val">--</span>
+                </div>
+                <div class="ota-spec-item">
+                  <span class="spec-label">Wi-Fi RSSI / RAM</span>
+                  <span class="spec-value" id="ota-gw-rssi-val">--</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Card 2: Node Cảm Biến C3 (ESP-NOW) -->
+            <div class="ota-dev-card" id="ota-card-node" data-target="esp32c3_node">
+              <div class="ota-dev-card-header">
+                <div class="ota-dev-card-icon ota-icon-c3">
+                  <i class="fa-solid fa-microchip"></i>
+                </div>
+                <div class="ota-dev-card-title-box">
+                  <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
+                    <h4 class="ota-dev-card-name">Node Cảm Biến C3</h4>
+                    <span class="gate-status-pill online" id="ota-node-status-badge">Sẵn sàng</span>
+                  </div>
+                  <span class="ota-dev-card-sub">ESP32-C3 RISC-V &bull; Radar LD2410 &bull; SHT30</span>
+                </div>
+              </div>
+              <div class="ota-dev-specs-grid">
+                <div class="ota-spec-item">
+                  <span class="spec-label">Phiên bản Firmware</span>
+                  <span class="spec-value text-green font-mono" id="ota-node-ver-val">v1.0.0</span>
+                </div>
+                <div class="ota-spec-item">
+                  <span class="spec-label">Kênh truyền</span>
+                  <span class="spec-value font-mono">ESP-NOW 2.4GHz</span>
+                </div>
+                <div class="ota-spec-item">
+                  <span class="spec-label">Điện áp Pin</span>
+                  <span class="spec-value" id="ota-node-bat-val">--</span>
+                </div>
+                <div class="ota-spec-item">
+                  <span class="spec-label">Gói tin nhận</span>
+                  <span class="spec-value" id="ota-node-pkts-val">--</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 2. Không Gian Nạp Firmware & Giám Sát Tiến Trình -->
+          <div class="ota-main-grid">
+            <!-- Cột Trái: Form Nạp Firmware -->
+            <div class="ota-card-panel">
+              <div class="ota-panel-header">
+                <div class="ota-panel-title">
+                  <i class="fa-solid fa-cloud-arrow-up text-green"></i>
+                  <span>Nạp Firmware Mới</span>
+                </div>
+                <span class="ota-badge-pill">Dual OTA Safe</span>
+              </div>
+
+              <!-- Chọn thiết bị cần nạp -->
+              <div class="ota-field-group" style="margin-bottom: 16px;">
+                <label class="ota-field-label">Thiết bị nhận bản cập nhật:</label>
+                <div class="ota-target-selector">
+                  <label class="ota-target-btn active" id="btn-select-target-gw">
+                    <input type="radio" name="ota_target_radio" value="esp32s3_gate" checked>
+                    <i class="fa-solid fa-server"></i>
+                    <span>Trạm Gateway ESP32-S3</span>
+                  </label>
+                  <label class="ota-target-btn" id="btn-select-target-node">
+                    <input type="radio" name="ota_target_radio" value="esp32c3_node">
+                    <i class="fa-solid fa-microchip"></i>
+                    <span>Node Cảm Biến C3</span>
+                  </label>
+                </div>
+              </div>
+
+              <!-- Tabs Phương Thức: Nạp file .bin vs Nhập Link URL -->
+              <div class="ota-method-switcher">
+                <button type="button" class="ota-tab-btn active" id="ota-tab-file">
+                  <i class="fa-solid fa-file-arrow-up"></i> Tải lên file .BIN
+                </button>
+                <button type="button" class="ota-tab-btn" id="ota-tab-url">
+                  <i class="fa-solid fa-link"></i> Nhập link URL OTA
+                </button>
+              </div>
+
+              <!-- Khung 1: Tải file .BIN -->
+              <div class="ota-tab-content" id="ota-content-file">
+                <div class="ota-dropzone-box" id="ota-dropzone">
+                  <input type="file" id="ota-file-input" accept=".bin" style="display: none;">
+                  <div class="ota-dropzone-content" id="ota-dropzone-prompt">
+                    <div class="ota-dropzone-icon">
+                      <i class="fa-solid fa-file-arrow-up"></i>
+                    </div>
+                    <div class="ota-dropzone-text">
+                      <strong>Kéo &amp; thả file firmware .bin vào đây</strong>
+                      <span>hoặc bấm để chọn file từ máy tính / điện thoại</span>
+                    </div>
+                    <button type="button" class="btn-ota-browse" id="btn-ota-browse">
+                      <i class="fa-regular fa-folder-open"></i> Duyệt file
+                    </button>
+                  </div>
+
+                  <!-- File đã chọn preview -->
+                  <div class="ota-file-selected" id="ota-file-selected" style="display: none;">
+                    <div class="ota-file-icon-box">
+                      <i class="fa-solid fa-microchip"></i>
+                    </div>
+                    <div class="ota-file-details">
+                      <div class="ota-file-name" id="ota-selected-filename">gate_firmware.bin</div>
+                      <div class="ota-file-size" id="ota-selected-filesize">0 KB</div>
+                    </div>
+                    <button type="button" class="btn-ota-clear-file" id="btn-ota-clear-file" title="Hủy chọn file">
+                      <i class="fa-solid fa-xmark"></i>
+                    </button>
+                  </div>
+                </div>
+
+                <div class="ota-field-row" style="margin-top: 14px;">
+                  <div class="ota-field-col">
+                    <label class="ota-field-label" for="ota-file-version-input">Phiên bản mới:</label>
+                    <input type="text" id="ota-file-version-input" class="ota-text-input" placeholder="Ví dụ: 1.0.1" value="1.0.1">
+                  </div>
+                </div>
+
+                <button type="button" class="btn-ota-submit" id="btn-ota-upload-start">
+                  <i class="fa-solid fa-bolt"></i> <span>Tải Lên &amp; Bắt Đầu Nạp OTA</span>
+                </button>
+              </div>
+
+              <!-- Khung 2: Nhập URL OTA -->
+              <div class="ota-tab-content" id="ota-content-url" style="display: none;">
+                <div class="ota-field-row">
+                  <div class="ota-field-col">
+                    <label class="ota-field-label" for="ota-url-text-input">Đường dẫn Firmware URL (.bin):</label>
+                    <input type="url" id="ota-url-text-input" class="ota-text-input" placeholder="http://180.93.113.40:8080/... hoặc https://...">
+                    <small style="display: block; margin-top: 5px; color: #64748b; font-size: 0.76rem;">
+                      <i class="fa-solid fa-circle-info"></i> ESP32 sẽ trực tiếp kết nối tới URL này qua HTTP/HTTPS để tải và nạp Flash.
+                    </small>
+                  </div>
+                </div>
+
+                <div class="ota-field-row" style="margin-top: 12px;">
+                  <div class="ota-field-col">
+                    <label class="ota-field-label" for="ota-url-version-input">Phiên bản mới:</label>
+                    <input type="text" id="ota-url-version-input" class="ota-text-input" placeholder="Ví dụ: 1.0.1" value="1.0.1">
+                  </div>
+                </div>
+
+                <button type="button" class="btn-ota-submit" id="btn-ota-url-start">
+                  <i class="fa-solid fa-bolt"></i> <span>Kích Hoạt Nâng Cấp Qua URL</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Cột Phải: Giám Sát Tiến Trình Realtime & Terminal Log -->
+            <div class="ota-card-panel">
+              <div class="ota-panel-header">
+                <div class="ota-panel-title">
+                  <i class="fa-solid fa-wave-square text-green"></i>
+                  <span>Tiến Trình &amp; Giám Sát Realtime</span>
+                </div>
+                <span class="ota-status-pill ota-status-idle" id="ota-progress-status-badge">Sẵn sàng (Idle)</span>
+              </div>
+
+              <!-- Thanh tiến trình phần trăm lớn -->
+              <div class="ota-progress-card">
+                <div class="ota-progress-top-info">
+                  <span class="ota-progress-title-text" id="ota-progress-title">Hệ thống đang ở trạng thái nghỉ</span>
+                  <span class="ota-progress-pct-val" id="ota-progress-percent">0%</span>
+                </div>
+                <div class="ota-progress-track">
+                  <div class="ota-progress-fill" id="ota-progress-fill" style="width: 0%;"></div>
+                </div>
+                <div class="ota-progress-sub-info">
+                  <span id="ota-progress-bytes-text">0 / 0 bytes</span>
+                  <span id="ota-progress-target-text"><i class="fa-solid fa-server"></i> Gateway ESP32-S3</span>
+                </div>
+              </div>
+
+              <!-- Màn hình Terminal Log thời gian thực -->
+              <div class="ota-terminal-section">
+                <div class="ota-terminal-top">
+                  <div class="ota-terminal-title">
+                    <i class="fa-solid fa-terminal"></i> Nhật Ký OTA (Live Console)
+                  </div>
+                  <button type="button" class="btn-ota-clear-log" id="btn-ota-clear-log" title="Xóa màn hình nhật ký">
+                    <i class="fa-solid fa-trash-can"></i> Xóa
+                  </button>
+                </div>
+                <div class="ota-terminal-console" id="ota-terminal-console">
+                  <div class="term-entry term-info">[HEURISTIC] Sẵn sàng nhận lệnh nạp firmware từ xa (OTA).</div>
+                  <div class="term-entry term-info">[SYSTEM] Hỗ trợ Dual Partition ota_0 &amp; ota_1 chống brick tự động.</div>
+                </div>
+              </div>
+
+              <!-- Ghi chú an toàn -->
+              <div class="ota-safety-notice">
+                <div class="safety-notice-icon"><i class="fa-solid fa-shield-halved"></i></div>
+                <div class="safety-notice-body">
+                  <strong>Cơ chế tự phục hồi chống Brick (Auto Rollback):</strong>
+                  Nếu firmware nạp mới gặp sự cố boot trong 10 giây đầu, chip ESP32-S3 sẽ tự động kích hoạt hủy bỏ và chuyển về phân vùng ổn định trước đó. Tuyệt đối không ngắt nguồn khi tiến trình đang diễn ra.
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </main>
@@ -1070,6 +1337,6 @@
   <!-- Toast Notification Container -->
   <div id="toast-container" class="toast-container"></div>
 
-  <script src="js/app.js?v=77"></script>
+  <script src="js/app.js?v=78"></script>
 </body>
 </html>
