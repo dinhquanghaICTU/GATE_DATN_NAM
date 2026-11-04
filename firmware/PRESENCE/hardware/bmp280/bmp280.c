@@ -65,16 +65,8 @@ typedef struct {
 } i2c_candidate_t;
 
 static const i2c_candidate_t CANDIDATES[] = {
-  { (gpio_num_t)BMP280_I2C_SDA_PIN, (gpio_num_t)BMP280_I2C_SCL_PIN, "Chuẩn cấu hình (SDA=GPIO8, SCL=GPIO9)" },
-  { (gpio_num_t)BMP280_I2C_SCL_PIN, (gpio_num_t)BMP280_I2C_SDA_PIN, "Đảo chân (SDA=GPIO9, SCL=GPIO8 - Ngược dây SDA/SCL)" },
-  { GPIO_NUM_6, GPIO_NUM_7, "Cặp GPIO 6 & 7 (SDA=GPIO6, SCL=GPIO7)" },
-  { GPIO_NUM_7, GPIO_NUM_6, "Đảo cặp GPIO 6 & 7 (SDA=GPIO7, SCL=GPIO6)" },
-  { GPIO_NUM_4, GPIO_NUM_5, "Cặp GPIO 4 & 5 (SDA=GPIO4, SCL=GPIO5)" },
-  { GPIO_NUM_5, GPIO_NUM_4, "Đảo cặp GPIO 4 & 5 (SDA=GPIO5, SCL=GPIO4)" },
-  { GPIO_NUM_0, GPIO_NUM_1, "Cặp GPIO 0 & 1 (SDA=GPIO0, SCL=GPIO1)" },
-  { GPIO_NUM_1, GPIO_NUM_0, "Đảo cặp GPIO 0 & 1 (SDA=GPIO1, SCL=GPIO0)" },
-  { GPIO_NUM_2, GPIO_NUM_3, "Cặp GPIO 2 & 3 (SDA=GPIO2, SCL=GPIO3)" },
-  { GPIO_NUM_3, GPIO_NUM_2, "Đảo cặp GPIO 2 & 3 (SDA=GPIO3, SCL=GPIO2)" },
+  { (gpio_num_t)BMP280_I2C_SDA_PIN, (gpio_num_t)BMP280_I2C_SCL_PIN, "SDA=GPIO8, SCL=GPIO9" },
+  { (gpio_num_t)BMP280_I2C_SCL_PIN, (gpio_num_t)BMP280_I2C_SDA_PIN, "SDA=GPIO9, SCL=GPIO8 (Đảo chân)" },
 };
 
 static void i2c_bus_recovery(gpio_num_t sda_io, gpio_num_t scl_io) {
@@ -210,10 +202,6 @@ static esp_err_t read_calibration_data(uint8_t addr) {
 esp_err_t bmp280_init(void) {
   s_is_available = false;
 
-  ESP_LOGI(TAG, "=========================================================");
-  ESP_LOGI(TAG, "BẮT ĐẦU QUÉT TỰ ĐỘNG BUS I2C TÌM CẢM BIẾN...");
-  ESP_LOGI(TAG, "=========================================================");
-
   uint8_t found_addr = 0;
   gpio_num_t found_sda = (gpio_num_t)BMP280_I2C_SDA_PIN;
   gpio_num_t found_scl = (gpio_num_t)BMP280_I2C_SCL_PIN;
@@ -221,24 +209,17 @@ esp_err_t bmp280_init(void) {
 
   for (size_t i = 0; i < total_candidates; i++) {
     const i2c_candidate_t *c = &CANDIDATES[i];
-    /* Never reconfigure radar UART pins during initial scan or bus recovery. */
-    if (c->sda == PRESENCE_UART_RX_PIN || c->scl == PRESENCE_UART_RX_PIN ||
-        c->sda == PRESENCE_UART_TX_PIN || c->scl == PRESENCE_UART_TX_PIN) {
-      continue;
-    }
     if (init_i2c_driver(c->sda, c->scl) != ESP_OK) {
       continue;
     }
 
     for (uint8_t addr = 0x08; addr <= 0x77; addr++) {
       if (probe_address(addr)) {
-        ESP_LOGI(TAG, "[I2C DETECTED] Tìm thấy thiết bị I2C tại địa chỉ 0x%02X trên %s!",
-                 addr, c->desc);
-
         if (addr == BMP280_I2C_ADDR_PRIM || addr == BMP280_I2C_ADDR_SEC) {
           uint8_t test_id = 0;
           if (i2c_read_regs(addr, BMP280_REG_ID, &test_id, 1) == ESP_OK) {
-            ESP_LOGI(TAG, "-> Đã đọc Chip ID = 0x%02X tại địa chỉ 0x%02X!", test_id, addr);
+            ESP_LOGI(TAG, "✅ [BMP280] Tìm thấy cảm biến tại 0x%02X (Chip ID: 0x%02X, %s)",
+                     addr, test_id, c->desc);
             found_addr = addr;
             found_sda = c->sda;
             found_scl = c->scl;
@@ -255,12 +236,8 @@ esp_err_t bmp280_init(void) {
   }
 
   if (!found_addr) {
-    ESP_LOGW(TAG, "[I2C SCANNER] Không tìm thấy thiết bị I2C nào phản hồi trên tất cả các cặp chân!");
-    ESP_LOGW(TAG, "HÃY KIỂM TRA PHẦN CỨNG MODULE BMP280:");
-    ESP_LOGW(TAG, "1. Nguồn VCC đã nối 3.3V và GND đã nối Mass?");
-    ESP_LOGW(TAG, "2. Chân CSB trên module: Hãy nối CSB lên 3.3V để kích hoạt chế độ I2C (tránh bị kẹt ở SPI mode)!");
-    ESP_LOGW(TAG, "3. Kiểm tra xem thứ tự chân trên bo mạch và module có bị chéo chân không.");
-
+    ESP_LOGW(TAG, "⚠️ [BMP280] Không tìm thấy cảm biến trên SDA=%d, SCL=%d",
+             BMP280_I2C_SDA_PIN, BMP280_I2C_SCL_PIN);
     if (s_driver_installed) {
       i2c_driver_delete(BMP280_I2C_PORT);
       s_driver_installed = false;

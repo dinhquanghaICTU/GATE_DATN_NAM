@@ -48,7 +48,7 @@ static void accept_report(const ld2410_report_t *report) {
   cb = s_state_cb;
   portEXIT_CRITICAL(&s_lock);
   if (changed) {
-    ESP_LOGI(TAG, "LD2410B: %s", detected ? "CO NGUOI" : "PHONG TRONG");
+    ESP_LOGD(TAG, "LD2410B: %s", detected ? "CO NGUOI" : "PHONG TRONG");
     if (cb) cb(detected);
   }
 }

@@ -81,7 +81,7 @@ static void send_telemetry_packet(void) {
   }
 
   if (err != ESP_OK) {
-    ESP_LOGW(TAG, "Không đọc được cảm biến (BMP280/SHT30), dùng dữ liệu cache cũ (%.1f°C, %.1f)",
+    ESP_LOGD(TAG, "Không đọc được cảm biến (BMP280/SHT30), dùng dữ liệu cache cũ (%.1f°C, %.1f)",
              s_cached_temp, s_cached_hum);
   }
 
@@ -104,12 +104,12 @@ static void on_presence_state_changed(bool is_detected) {
   s_cached_presence = is_detected;
 
   if (is_detected) {
-    ESP_LOGI(TAG, "[SỰ KIỆN] Phát hiện người bước vào! Kích hoạt truyền ESP-NOW...");
+    ESP_LOGI(TAG, "🚶 [CẢM BIẾN] Phát hiện người! -> Kích hoạt truyền ESP-NOW");
     if (relay_get_auto_mode()) {
       relay_turn_on();
     }
   } else {
-    ESP_LOGI(TAG, "[SỰ KIỆN] Người đã rời đi (Hết thời gian giữ)! Cập nhật ESP-NOW...");
+    ESP_LOGI(TAG, "🌿 [CẢM BIẾN] Phòng trống (Hết thời gian giữ) -> Cập nhật ESP-NOW");
     if (relay_get_auto_mode()) {
       relay_turn_off();
     }

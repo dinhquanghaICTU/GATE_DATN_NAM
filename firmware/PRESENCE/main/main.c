@@ -12,23 +12,29 @@
 
 static const char *TAG = "PRESENCE_MAIN";
 
-/* Reads the driver's snapshot only; it never consumes bytes from the radar UART. */
+/* Giám sát dữ liệu Radar: chỉ in khi có thay đổi trạng thái hoặc định kỳ mỗi 8s khi có người */
 static void presence_uart_test_task(void *arg) {
-  static const char *const states[] = {"EMPTY", "MOVING", "STATIONARY", "BOTH"};
+  static const char *const states[] = {"TRỐNG", "CHUYỂN ĐỘNG", "ĐỨNG YÊN", "CẢ HAI"};
+  uint8_t last_state = 0xFF;
+  uint32_t counter = 0;
+
   while (1) {
     presence_sensor_data_t data;
-    if (!presence_sensor_get_data(&data) || !data.online) {
-      ESP_LOGW(TAG, "[LD2410B TEST] No fresh UART report. Check TX->GPIO%d, "
-                    "RX->GPIO%d, common GND and %d baud", PRESENCE_UART_RX_PIN,
-               PRESENCE_UART_TX_PIN, PRESENCE_UART_BAUD_RATE);
-    } else {
-      ESP_LOGI(TAG, "[LD2410B TEST] %s presence=%d moving=%u cm/%u "
-                    "still=%u cm/%u distance=%u cm frames=%lu age=%lu ms",
-               states[data.radar.target_state], data.detected,
-               data.radar.moving_distance_cm, data.radar.moving_energy,
-               data.radar.stationary_distance_cm, data.radar.stationary_energy,
-               data.radar.detection_distance_cm, (unsigned long)data.frame_count,
-               (unsigned long)data.age_ms);
+    if (presence_sensor_get_data(&data) && data.online) {
+      bool state_changed = (data.radar.target_state != last_state);
+      last_state = data.radar.target_state;
+
+      if (state_changed || (data.radar.target_state != 0 && (++counter % 4 == 0))) {
+        if (data.radar.target_state == 0) {
+          ESP_LOGI(TAG, "📡 [RADAR] 🌿 Khu vực TRỐNG (Không có mục tiêu)");
+        } else {
+          ESP_LOGI(TAG, "📡 [RADAR] %-12s | Cự ly: %3u cm | Động: %2u%% | Tĩnh: %2u%%",
+                   states[data.radar.target_state],
+                   data.radar.detection_distance_cm,
+                   data.radar.moving_energy,
+                   data.radar.stationary_energy);
+        }
+      }
     }
     vTaskDelay(pdMS_TO_TICKS(2000));
   }
@@ -57,17 +63,12 @@ void app_main(void) {
   }
 
   ESP_LOGI(TAG, "=========================================================");
-  ESP_LOGI(TAG, "KHỞI ĐỘNG %s", DEVICE_TYPE);
-  ESP_LOGI(TAG, "Firmware: v%s | Target: ESP32-C3 Super Mini",
-           FIRMWARE_VERSION);
-  ESP_LOGI(TAG, "Node ID: %d | ESP-NOW Channel: %d", NODE_ID,
-           ESP_NOW_WIFI_CHANNEL);
-  ESP_LOGI(TAG, "BMP280 / SHT30: SDA=GPIO%d, SCL=GPIO%d", BMP280_I2C_SDA_PIN,
-           BMP280_I2C_SCL_PIN);
-  ESP_LOGI(TAG, "LD2410B UART: RX=GPIO%d, TX=GPIO%d | Relay: GPIO%d",
-           PRESENCE_UART_RX_PIN, PRESENCE_UART_TX_PIN, RELAY_PIN);
-  ESP_LOGI(TAG, "Status LED: GPIO%d (Đã loại bỏ Button)", STATUS_LED_PIN);
-
+  ESP_LOGI(TAG, "🚀 KHỞI ĐỘNG %s (v%s)", DEVICE_TYPE, FIRMWARE_VERSION);
+  ESP_LOGI(TAG, "   Node ID: %d | ESP-NOW Channel: %d", NODE_ID, ESP_NOW_WIFI_CHANNEL);
+  ESP_LOGI(TAG, "   BMP280 / SHT30 : SDA=GPIO%d, SCL=GPIO%d", BMP280_I2C_SDA_PIN, BMP280_I2C_SCL_PIN);
+  ESP_LOGI(TAG, "   LD2410B Radar  : RX=GPIO%d, TX=GPIO%d", PRESENCE_UART_RX_PIN, PRESENCE_UART_TX_PIN);
+  ESP_LOGI(TAG, "   Relay Tải Đèn  : GPIO%d | Status LED: GPIO%d", RELAY_PIN, STATUS_LED_PIN);
+  ESP_LOGI(TAG, "=========================================================");
 
   ESP_ERROR_CHECK(presence_controller_init());
 
@@ -77,7 +78,6 @@ void app_main(void) {
     ESP_LOGE(TAG, "Cannot create LD2410B test task");
   }
 
-  ESP_LOGI(TAG,
-           "Node Cảm biến Hiện diện & Môi trường (BMP280) đã sẵn sàng giao tiếp ESP-NOW!");
+  ESP_LOGI(TAG, "✨ Node Cảm biến Hiện diện & Môi trường đã sẵn sàng hoạt động!");
 }
 

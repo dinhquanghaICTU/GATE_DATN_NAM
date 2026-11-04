@@ -49,13 +49,13 @@ esp_err_t relay_init(void) {
 void relay_turn_on(void) {
   s_relay_state = true;
   gpio_set_level((gpio_num_t)RELAY_PIN, get_gpio_level(true));
-  ESP_LOGI(TAG, "[RELAY] BẬT tải đèn trên GPIO %d", RELAY_PIN);
+  ESP_LOGI(TAG, "💡 [RELAY] BẬT tải đèn (GPIO %d)", RELAY_PIN);
 }
 
 void relay_turn_off(void) {
   s_relay_state = false;
   gpio_set_level((gpio_num_t)RELAY_PIN, get_gpio_level(false));
-  ESP_LOGI(TAG, "[RELAY] TẮT tải đèn trên GPIO %d", RELAY_PIN);
+  ESP_LOGI(TAG, "💡 [RELAY] TẮT tải đèn (GPIO %d)", RELAY_PIN);
 }
 
 void relay_toggle(void) {

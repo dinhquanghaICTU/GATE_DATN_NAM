@@ -34,14 +34,10 @@ static void on_esp_now_send_cb(const uint8_t *mac_addr, esp_now_send_status_t st
     s_tx_success_count++;
     s_is_connected = true;
     led_set_espnow_connected(true);
-    ESP_LOGI(TAG, "[ESP-NOW TX OK] Đã gửi thành công tới %02X:%02X:%02X:%02X:%02X:%02X!",
-             mac_addr[0], mac_addr[1], mac_addr[2], mac_addr[3], mac_addr[4], mac_addr[5]);
   } else {
     s_tx_fail_count++;
     s_is_connected = false;
     led_set_espnow_connected(false);
-    ESP_LOGW(TAG, "[ESP-NOW TX NACK] Chưa có phản hồi từ %02X:%02X:%02X:%02X:%02X:%02X",
-             mac_addr[0], mac_addr[1], mac_addr[2], mac_addr[3], mac_addr[4], mac_addr[5]);
   }
 }
 
@@ -56,14 +52,14 @@ static void on_esp_now_recv_cb(const esp_now_recv_info_t *recv_info, const uint8
 
   if (len == sizeof(NodeCommand_t)) {
     const NodeCommand_t *cmd = (const NodeCommand_t *)data;
-    ESP_LOGI(TAG, "[ESP-NOW RECV CMD] cmd_id=%d, node_id=%d, param=%lu",
+    ESP_LOGI(TAG, "📥 [NHẬN LỆNH GATEWAY] Cmd ID=%d, Node ID=%d, Param=%lu",
              cmd->cmd_id, cmd->node_id, (unsigned long)cmd->param);
 
     if (s_cmd_cb) {
       s_cmd_cb(recv_info->src_addr, cmd);
     }
   } else {
-    ESP_LOGI(TAG, "[ESP-NOW RECV RAW] %d bytes từ %02X:%02X:%02X:%02X:%02X:%02X",
+    ESP_LOGI(TAG, "📥 [NHẬN RAW] %d bytes từ %02X:%02X:%02X:%02X:%02X:%02X",
              len, recv_info->src_addr[0], recv_info->src_addr[1], recv_info->src_addr[2],
              recv_info->src_addr[3], recv_info->src_addr[4], recv_info->src_addr[5]);
   }
@@ -144,43 +140,53 @@ esp_err_t esp_now_node_send_telemetry(const uint8_t *gateway_mac, const NodeTele
   static const uint8_t s_default_gw_mac[ESP_NOW_ETH_ALEN] = GATEWAY_MAC_ADDR;
   const uint8_t *gw_mac = gateway_mac ? gateway_mac : s_default_gw_mac;
 
-  if (telemetry->val2 > 150.0f) {
-    ESP_LOGI(TAG, "[ESP-NOW TX] Pkt #%lu | Node #%u | Temp: %.2f°C | Press: %.2f hPa | Presence: %s | Bat: %.2fV",
-             (unsigned long)telemetry->packet_id, telemetry->node_id, telemetry->val1, telemetry->val2,
-             telemetry->presence ? "CO NGUOI" : "TRONG", telemetry->battery_volt);
-  } else {
-    ESP_LOGI(TAG, "[ESP-NOW TX] Pkt #%lu | Node #%u | Temp: %.2f°C | Hum: %.2f%% | Presence: %s | Bat: %.2fV",
-             (unsigned long)telemetry->packet_id, telemetry->node_id, telemetry->val1, telemetry->val2,
-             telemetry->presence ? "CO NGUOI" : "TRONG", telemetry->battery_volt);
-  }
+  /* Lấy kênh Wi-Fi hiện tại */
+  uint8_t cur_channel = 1;
+  wifi_second_chan_t sec_chan;
+  esp_wifi_get_channel(&cur_channel, &sec_chan);
 
-  /* Probe one channel per telemetry interval after an explicit MAC NACK.
-   * Never move the gateway radio: its channel belongs to the connected AP. */
+  /* Chuyển kênh nếu lần trước bị NACK */
   if (s_try_next_channel) {
-    uint8_t channel;
-    wifi_second_chan_t secondary;
     wifi_country_t country;
-    esp_err_t channel_err = esp_wifi_get_channel(&channel, &secondary);
-    if (channel_err != ESP_OK) return channel_err;
-    channel_err = esp_wifi_get_country(&country);
-    if (channel_err != ESP_OK) return channel_err;
-    uint8_t last = country.schan + country.nchan - 1;
-    uint8_t next = channel < country.schan || channel >= last ? country.schan : channel + 1;
-    channel_err = esp_wifi_set_channel(next, WIFI_SECOND_CHAN_NONE);
-    if (channel_err != ESP_OK) return channel_err;
-    ESP_LOGW(TAG, "Gateway NACK: probing channel %u", next);
+    if (esp_wifi_get_country(&country) == ESP_OK) {
+      uint8_t last = country.schan + country.nchan - 1;
+      uint8_t next = cur_channel < country.schan || cur_channel >= last ? country.schan : cur_channel + 1;
+      if (esp_wifi_set_channel(next, WIFI_SECOND_CHAN_NONE) == ESP_OK) {
+        cur_channel = next;
+      }
+    }
     s_try_next_channel = false;
   }
+
+  /* In log bản tin gửi đi định dạng cột thẳng hàng, emoji rõ ràng */
+  const char *presence_str = telemetry->presence ? "🚶 CÓ NGƯỜI" : "🌿 TRỐNG   ";
+  if (telemetry->val2 > 150.0f) {
+    ESP_LOGI(TAG, "📤 [TX #%-3lu] 🌡️ %5.2f°C | 💨 %7.2f hPa | %s | 🔋 %.2fV | Kênh %u",
+             (unsigned long)telemetry->packet_id, telemetry->val1, telemetry->val2,
+             presence_str, telemetry->battery_volt, cur_channel);
+  } else {
+    ESP_LOGI(TAG, "📤 [TX #%-3lu] 🌡️ %5.2f°C | 💧 %5.2f%%     | %s | 🔋 %.2fV | Kênh %u",
+             (unsigned long)telemetry->packet_id, telemetry->val1, telemetry->val2,
+             presence_str, telemetry->battery_volt, cur_channel);
+  }
+
   if (s_tx_sem) xSemaphoreTake(s_tx_sem, 0);
   esp_err_t err = esp_now_node_send_raw(gw_mac, (const uint8_t *)telemetry, sizeof(*telemetry));
   if (err != ESP_OK) return err;
+
   if (!s_tx_sem || xSemaphoreTake(s_tx_sem, pdMS_TO_TICKS(500)) != pdTRUE) {
-    ESP_LOGW(TAG, "ESP-NOW TX callback timeout; channel unchanged");
+    ESP_LOGW(TAG, "   └─> ⏱️ Timeout: Không nhận được phản hồi ACK từ Gateway");
     return ESP_ERR_TIMEOUT;
   }
-  s_try_next_channel = s_last_status != ESP_NOW_SEND_SUCCESS;
-  if (s_try_next_channel) return ESP_FAIL;
 
+  s_try_next_channel = (s_last_status != ESP_NOW_SEND_SUCCESS);
+  if (s_try_next_channel) {
+    uint8_t probe_next = (cur_channel >= 11) ? 1 : (cur_channel + 1);
+    ESP_LOGW(TAG, "   └─> ⚠️ NACK: Gateway chưa nhận -> Lần tới quét Kênh %u", probe_next);
+    return ESP_FAIL;
+  }
+
+  ESP_LOGI(TAG, "   └─> ✅ ACK: Gateway đã nhận thành công!");
   return ESP_OK;
 }
 
