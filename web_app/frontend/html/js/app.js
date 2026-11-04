@@ -1725,7 +1725,37 @@ document.addEventListener("DOMContentLoaded", () => {
   function openChildDeviceDrawer(devId) {
     let dev = customDevices.find(d => d.id === devId);
     if (!dev && (devId === "dev_espnow_node_1" || (typeof devId === "string" && (devId.includes("espnow") || devId.includes("sensor"))))) {
-      dev = customDevices.find(d => d.type === "sensor" || (d.id && (d.id.includes("espnow") || d.id.includes("sensor"))));
+      dev = customDevices.find(d => d.type === "sensor" || d.type === "espnow" || (d.id && (d.id.includes("espnow") || d.id.includes("sensor"))));
+    }
+    // Đảm bảo trạm IR luôn mở được dù chưa lưu
+    if (!dev && (devId === "dev_ir_hub_hunonic" || (typeof devId === "string" && devId.includes("ir_hub")))) {
+      dev = foundHub || {
+        id: "dev_ir_hub_hunonic",
+        name: "IR trung tâm",
+        type: "ir_hub",
+        room: localStorage.getItem("gate_room") || "Phòng khách",
+        device_id: "3987670",
+        extra: "Trạm phát IR 360° đa hướng",
+        children: [],
+        state: 0
+      };
+      if (!customDevices.some(d => d.id === dev.id)) {
+        customDevices.push(dev);
+        localStorage.setItem("gate_custom_devices", JSON.stringify(customDevices));
+      }
+    }
+    // Đảm bảo node cảm biến luôn mở được dù chưa có trong danh sách
+    if (!dev && (devId === "dev_espnow_node_1" || devId === "node_espnow_1" || (typeof devId === "string" && (devId.includes("espnow") || devId.includes("sensor"))) || devId === null || devId === undefined)) {
+      dev = {
+        id: devId || "dev_espnow_node_1",
+        name: "Node Cảm Biến C3",
+        type: "sensor",
+        room: localStorage.getItem("gate_room") || "Phòng khách",
+        extra: "Cảm biến nhiệt độ, độ ẩm & hiện diện",
+        state: 1
+      };
+      customDevices.push(dev);
+      localStorage.setItem("gate_custom_devices", JSON.stringify(customDevices));
     }
     if (!dev) return;
     currentDrawerTarget = dev.id;
@@ -2491,13 +2521,13 @@ document.addEventListener("DOMContentLoaded", () => {
 
         extraCardsHtml += `
           <div class="hunonic-card subview-gw-child" data-id="${dev.id}" data-gw-action="open_custom_dev" title="${escapeHtml(dev.name)}">
-            <div class="hunonic-card-top">
+            <div class="hunonic-card-top" style="pointer-events: none;">
               <div class="hunonic-hex-icon">
                 ${iconSvg}
               </div>
               ${getWifiHunonicSvg(isOnline)}
             </div>
-            <div class="hunonic-card-bottom">
+            <div class="hunonic-card-bottom" style="pointer-events: none;">
               <h4 class="hunonic-card-title">${escapeHtml(dev.name)}</h4>
               <p class="hunonic-card-sub ${isOnline ? 'on' : ''}">${subText}</p>
             </div>
@@ -2509,14 +2539,14 @@ document.addEventListener("DOMContentLoaded", () => {
       if (foundHub) {
         irSubCardHtml = `
           <!-- 1. IR Trung Tâm -->
-          <div class="hunonic-card subview-gw-child" data-gw-action="open_ir_hub" title="Bấm vào để mở các thiết bị điều hòa trong IR">
-            <div class="hunonic-card-top">
+          <div class="hunonic-card subview-gw-child" data-id="${foundHub ? foundHub.id : 'dev_ir_hub_hunonic'}" data-gw-action="open_ir_hub" title="Bấm vào để mở các thiết bị điều hòa trong IR">
+            <div class="hunonic-card-top" style="pointer-events: none;">
               <div class="hunonic-hex-icon">
                 ${getIrHubHexSvg()}
               </div>
               ${getWifiHunonicSvg(isIrOnline)}
             </div>
-            <div class="hunonic-card-bottom">
+            <div class="hunonic-card-bottom" style="pointer-events: none;">
               <h4 class="hunonic-card-title">${escapeHtml(foundHub.name || "IR trung tâm")}</h4>
               <p class="hunonic-card-sub ${isIrOnline ? 'on' : ''}">
                 ${isIrOnline ? `Thiết bị con: ${irChildCount}` : `<span style="color:#ef4444;font-weight:600;"><i class="fa-solid fa-power-off"></i> Ngoại tuyến (Chưa cắm điện)</span>`}
@@ -2568,7 +2598,9 @@ document.addEventListener("DOMContentLoaded", () => {
     foundHub = getActiveIrHub();
     refreshPresencePanel();
     if (currentHubView) {
-      renderSubViewDevices(currentHubView.type, currentHubView.dev);
+      if (!isSubViewHolding) {
+        renderSubViewDevices(currentHubView.type, currentHubView.dev);
+      }
       if (!foundHub) document.querySelectorAll('[data-gw-action="open_ir_hub"]').forEach(card => card.remove());
       if (localStorage.getItem("gate_sensor_deleted") === "true" || !customDevices.some(d => d.type === "sensor")) {
         document.querySelectorAll('.subview-gw-child[data-gw-action="open_sensor"], .subview-gw-child[data-id*="espnow"], .subview-gw-child[data-id*="sensor"]').forEach(card => card.remove());
@@ -2746,35 +2778,47 @@ document.addEventListener("DOMContentLoaded", () => {
     let startX = 0;
     let startY = 0;
     let activePointer = null;
-    const settingsCard = target => target.closest("#card-gateway-master, #card-ir-hub-master");
+    let activeCard = null;
+    const settingsCard = target => target.closest("#card-gateway-master, #card-ir-hub-master, .hunonic-card[data-id]");
     const cancelHold = () => {
       clearTimeout(holdTimer);
       holdTimer = null;
       activePointer = null;
+      if (activeCard) {
+        activeCard.classList.remove("is-holding");
+        activeCard = null;
+      }
     };
     const openSettings = card => {
+      if (!card) return;
       if (card.id === "card-gateway-master") openGatewayDrawer();
-      else openChildDeviceDrawer(foundHub ? foundHub.id : "dev_ir_hub_hunonic");
+      else if (card.id === "card-ir-hub-master") openChildDeviceDrawer((foundHub && foundHub.id) || "dev_ir_hub_hunonic");
+      else openChildDeviceDrawer(card.getAttribute("data-id"));
     };
     devicesGrid.addEventListener("pointerdown", e => {
       cancelHold();
       held = false;
-      if (!e.isPrimary || e.button !== 0) return;
+      if (!e.isPrimary) return;
+      if (e.pointerType === "mouse" && e.button !== 0) return;
       const card = settingsCard(e.target);
       if (!card) return;
       startX = e.clientX;
       startY = e.clientY;
       activePointer = e.pointerId;
+      activeCard = card;
+      card.classList.add("is-holding");
       holdTimer = setTimeout(() => {
         held = true;
         cancelHold();
-        if (navigator.vibrate) navigator.vibrate(30);
+        if (navigator.vibrate) {
+          try { navigator.vibrate(30); } catch(err) {}
+        }
         openSettings(card);
-      }, 500);
+      }, 450);
     });
     devicesGrid.addEventListener("pointermove", e => {
       if (activePointer === e.pointerId &&
-          (Math.abs(e.clientX - startX) > 10 || Math.abs(e.clientY - startY) > 10)) cancelHold();
+          (Math.abs(e.clientX - startX) > 25 || Math.abs(e.clientY - startY) > 25)) cancelHold();
     });
     window.addEventListener("pointerup", cancelHold);
     window.addEventListener("pointercancel", cancelHold);
@@ -2859,63 +2903,95 @@ document.addEventListener("DOMContentLoaded", () => {
   };
 
   // ── XỬ LÝ EVENT DELEGATION TRÊN SUB-VIEW DEVICES GRID ───────────────────────
+  let isSubViewHolding = false;
   const subviewDevicesGridEl = document.getElementById("subview-devices-grid");
   if (subviewDevicesGridEl) {
     let subHoldTimer = null;
     let subHeld = false;
     let subPointer = null;
+    let subActiveCard = null;
     let subStartX = 0, subStartY = 0;
+
     const cancelSubHold = () => {
       clearTimeout(subHoldTimer);
       subHoldTimer = null;
       subPointer = null;
-    };
-    const openSubviewSettings = card => {
-      if (card.getAttribute("data-gw-action") === "open_ir_hub") {
-        if (foundHub) openChildDeviceDrawer(foundHub.id);
-      } else {
-        const sensor = customDevices.find(d => d.type === "sensor");
-        const id = card.getAttribute("data-id") || (sensor && sensor.id);
-        if (id) openChildDeviceDrawer(id);
+      isSubViewHolding = false;
+      if (subActiveCard) {
+        subActiveCard.classList.remove("is-holding");
+        subActiveCard = null;
       }
     };
+
+    const triggerCardHold = card => {
+      if (!card) return;
+      subHeld = true;
+      cancelSubHold();
+      if (navigator.vibrate) {
+        try { navigator.vibrate(30); } catch(e) {}
+      }
+      const action = card.getAttribute("data-gw-action");
+      if (action === "open_ir_hub") {
+        const hubId = (foundHub && foundHub.id) || "dev_ir_hub_hunonic";
+        openChildDeviceDrawer(hubId);
+      } else {
+        const cardId = card.getAttribute("data-id") || "dev_espnow_node_1";
+        openChildDeviceDrawer(cardId);
+      }
+    };
+
+    // 1. POINTERDOWN (Hỗ trợ cả cảm ứng ngón tay lẫn chuột)
     subviewDevicesGridEl.addEventListener("pointerdown", e => {
       cancelSubHold();
       subHeld = false;
-      if (!e.isPrimary || e.button !== 0) return;
+      if (!e.isPrimary) return;
+      if (e.pointerType === "mouse" && e.button !== 0) return;
+
       const card = e.target.closest(".subview-gw-child");
       if (!card) return;
+
       subPointer = e.pointerId;
+      subActiveCard = card;
       subStartX = e.clientX;
       subStartY = e.clientY;
+      isSubViewHolding = true;
+
+      card.classList.add("is-holding");
+
       subHoldTimer = setTimeout(() => {
-        subHeld = true;
-        cancelSubHold();
-        if (navigator.vibrate) navigator.vibrate(30);
-        openSubviewSettings(card);
-      }, 500);
+        triggerCardHold(card);
+      }, 450);
     });
+
+    // 2. POINTERMOVE (Ngưỡng 25px để không bị hủy khi rung tay nhẹ trên điện thoại)
     subviewDevicesGridEl.addEventListener("pointermove", e => {
-      if (subPointer === e.pointerId && (Math.abs(e.clientX - subStartX) > 10 ||
-          Math.abs(e.clientY - subStartY) > 10)) cancelSubHold();
+      if (subPointer === e.pointerId && (Math.abs(e.clientX - subStartX) > 25 || Math.abs(e.clientY - subStartY) > 25)) {
+        cancelSubHold();
+      }
     });
+
     window.addEventListener("pointerup", cancelSubHold);
     window.addEventListener("pointercancel", cancelSubHold);
     window.addEventListener("blur", cancelSubHold);
+
+    // 3. CONTEXTMENU (Chuột phải máy tính)
     subviewDevicesGridEl.addEventListener("contextmenu", e => {
       const card = e.target.closest(".subview-gw-child");
       if (!card) return;
       e.preventDefault();
-      cancelSubHold();
-      if (!subHeld) openSubviewSettings(card);
-      subHeld = true;
+      triggerCardHold(card);
     });
+
+    // 4. CLICK (Chặn sự kiện click sau khi vừa nhả hold)
     subviewDevicesGridEl.addEventListener("click", e => {
-      if (!subHeld) return;
-      subHeld = false;
-      e.preventDefault();
-      e.stopImmediatePropagation();
+      if (subHeld) {
+        subHeld = false;
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        return;
+      }
     }, true);
+
     subviewDevicesGridEl.addEventListener("click", async (e) => {
       // 1. Click vào AC card trong IR Hub Subview -> Mở Điều khiển Điều Hòa!
       const acCard = e.target.closest(".subview-ac-card");
@@ -2930,8 +3006,10 @@ document.addEventListener("DOMContentLoaded", () => {
       if (gwChild) {
         const action = gwChild.getAttribute("data-gw-action");
         if (action === "open_ir_hub") {
+          // Click vào IR Hub -> Mở màn hình IR Subview (chứa các AC)
           openHubSubView("ir_hub", foundHub, "gateway");
         } else if (action === "open_custom_dev" || action === "open_sensor") {
+          // Click vào Node Cảm Biến -> Mở Drawer thông tin & cài đặt
           const devId = gwChild.getAttribute("data-id") || "dev_espnow_node_1";
           openChildDeviceDrawer(devId);
         }
