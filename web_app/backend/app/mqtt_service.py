@@ -46,6 +46,8 @@ latest_gateway_status = {
     }
 }
 
+current_ota_progress = latest_gateway_status["ota"]
+
 latest_sensor_data = {
     "node_id": 1,
     "val1": 0.0,
@@ -131,6 +133,16 @@ def on_message(client, userdata, msg):
                     "total_node_pkts": data.get("total_node_pkts", 0),
                     "fw_ver": data.get("fw_ver", "1.0.0")
                 })
+
+                # Kiểm tra tự động phát hiện Firmware mới boot lên thành công sau khi OTA Reboot (giống cơ chế Pump)
+                new_fw = data.get("fw_ver")
+                if new_fw and latest_gateway_status["ota"].get("status") in ("in_progress", "rebooting"):
+                    tgt_ver = latest_gateway_status["ota"].get("version")
+                    if tgt_ver and (new_fw == tgt_ver or new_fw != latest_gateway_status.get("fw_ver")):
+                        latest_gateway_status["ota"]["status"] = "success"
+                        latest_gateway_status["ota"]["percent"] = 100
+                        latest_gateway_status["ota"]["message"] = f"Thiết bị đã kích hoạt firmware v{new_fw} thành công!"
+                        logger.info(f"🎉 [OTA AUTO SUCCESS] Thiết bị xác nhận version mới v{new_fw}!")
 
                 # A heartbeat also refreshes the first real AC, even if device_list
                 # was published before this backend subscribed.
@@ -276,20 +288,20 @@ def on_message(client, userdata, msg):
                     latest_gateway_status["ac_fan"] = dev_entry["fan"]
                     latest_gateway_status["ac_brand"] = dev_entry["brand"]
 
-            elif evt == "ota_progress":
+            elif evt in ("ota_progress", "ota_status"):
                 latest_gateway_status["online"] = True
                 latest_gateway_status["last_seen"] = now.isoformat()
-                latest_gateway_status["ota"] = {
+                latest_gateway_status["ota"].update({
                     "status": data.get("status", "in_progress"),
                     "percent": data.get("percent", 0),
                     "bytes": data.get("bytes", 0),
                     "total": data.get("total", 0),
                     "target": data.get("target", "esp32s3_gate"),
-                    "error": data.get("error", ""),
+                    "error": data.get("error", None),
                     "message": data.get("message", ""),
-                    "updated_at": now.isoformat()
-                }
-                logger.info(f"[OTA PROGRESS] {data.get('percent')}% - Status: {data.get('status')}")
+                    "timestamp": int(now.timestamp())
+                })
+                logger.info(f"📡 [OTA PROGRESS] {data.get('target', 'esp32s3_gate')} -> {data.get('percent')}% ({data.get('status')})")
 
         # 2. Nhận dữ liệu cảm biến Node ESP-NOW
         elif topic == settings.TOPIC_GATE_TELEMETRY or "node_id" in data:

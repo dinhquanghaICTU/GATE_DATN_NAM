@@ -114,10 +114,13 @@ class NodeCommandRequest(BaseModel):
 
 class OTATriggerRequest(BaseModel):
     target: str = Field(default="esp32s3_gate", description="Mục tiêu nâng cấp: esp32s3_gate hoặc esp32c3_node")
-    url: str = Field(..., description="Đường dẫn HTTP/HTTPS tới file binary (.bin) của firmware")
     version: Optional[str] = Field(default="1.0.1", description="Phiên bản firmware mới")
+    url: str = Field(..., description="Đường dẫn HTTP/HTTPS tới file binary (.bin) của firmware")
+    filename: Optional[str] = Field(default="", description="Tên file firmware (.bin)")
     size: Optional[int] = Field(default=0, description="Dung lượng file firmware (bytes)")
     md5: Optional[str] = Field(default="", description="Mã băm MD5 kiểm tra tính toàn vẹn")
+
+OtaTriggerRequest = OTATriggerRequest
 
 class GatewayCommandResponse(BaseModel):
     success: bool

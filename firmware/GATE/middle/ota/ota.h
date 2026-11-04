@@ -27,4 +27,5 @@ bool ota_is_updating(void);
 }
 #endif
 
-#endif // __OTA_H__
+#endif
+

@@ -36,6 +36,9 @@ services:
       MQTT_PASSWORD: "Zdinhquangha1234"
       DEFAULT_ADMIN_USER: "admin"
       DEFAULT_ADMIN_PASS: "admin123"
+    volumes:
+      - ./backend/app:/app/app
+      - ./firmware_storage:/app/firmware_storage
     depends_on:
       gate_postgres:
         condition: service_healthy

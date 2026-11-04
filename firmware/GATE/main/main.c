@@ -21,7 +21,6 @@
 #include "m_state_machine.h"
 #include "mqtt.h"
 #include "ota.h"
-#include "relay.h"
 #include "wifi.h"
 
 static const char *TAG = "GATE_MAIN";
@@ -34,12 +33,12 @@ static void print_system_info(void) {
   esp_flash_get_size(NULL, &flash_size);
 
   ESP_LOGI(TAG, "==========================================================");
-  ESP_LOGI(TAG, "      ESP32-S3 GATEWAY FIRMWARE (DATN_NAM)             ");
-  ESP_LOGI(TAG, "      Phiên bản: %s | IDF: %s                             ",
+  ESP_LOGI(TAG, "ESP32-S3 GATEWAY FIRMWARE (DATN_NAM)             ");
+  ESP_LOGI(TAG, "Phiên bản: %s | IDF: %s                             ",
            FIRMWARE_VERSION, esp_get_idf_version());
-  ESP_LOGI(TAG, "      Chip: %s (%d Cores, Rev %d)                        ",
+  ESP_LOGI(TAG, "Chip: %s (%d Cores, Rev %d)                        ",
            CONFIG_IDF_TARGET, chip_info.cores, chip_info.revision);
-  ESP_LOGI(TAG, "      Flash: %lu MB | Free SRAM: %lu bytes               ",
+  ESP_LOGI(TAG, "Flash: %lu MB | Free SRAM: %lu bytes               ",
            (unsigned long)(flash_size / (1024 * 1024)),
            (unsigned long)esp_get_free_heap_size());
   ESP_LOGI(TAG, "==========================================================");
@@ -101,7 +100,6 @@ void app_main(void) {
 
   led_init();
   button_init();
-  relay_init();
 
   wifi_init();
   app_mqtt_init(NULL);
@@ -117,3 +115,4 @@ void app_main(void) {
 
   ESP_LOGI(TAG, "Hệ thống Gateway ESP32-S3 đã sẵn sàng!");
 }
+

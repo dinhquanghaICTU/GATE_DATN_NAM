@@ -84,7 +84,8 @@ esp_err_t ota_parse_json(const char *json_str, ota_config_t *out_cfg) {
 }
 
 static void ota_task(void *pvParameter) {
-  ESP_LOGI(TAG, "🚀 [OTA GATEWAY] Bat dau tai va nap tu: %s", s_current_ota_cfg.url);
+  const char *target = s_current_ota_cfg.target[0] ? s_current_ota_cfg.target : "esp32s3_gate";
+  ESP_LOGI(TAG, "🚀 [OTA GATEWAY] Bat dau tai va nap cho [%s] tu: %s", target, s_current_ota_cfg.url);
 
   esp_http_client_config_t http_config = {
       .url = s_current_ota_cfg.url,
@@ -104,9 +105,9 @@ static void ota_task(void *pvParameter) {
              esp_err_to_name(err), err);
     char err_buf[256];
     snprintf(err_buf, sizeof(err_buf),
-             "{\"event\":\"ota_progress\",\"target\":\"esp32s3_gate\","
+             "{\"event\":\"ota_progress\",\"target\":\"%s\","
              "\"status\":\"failed\",\"percent\":0,\"error\":\"%s\"}",
-             esp_err_to_name(err));
+             target, esp_err_to_name(err));
 #ifdef TOPIC_GATE_STATUS
     app_mqtt_publish(TOPIC_GATE_STATUS, err_buf, 1, 0);
 #endif
@@ -133,14 +134,15 @@ static void ota_task(void *pvParameter) {
     int percent = (image_size > 0) ? (read_len * 100 / image_size) : 0;
     if (percent > 100) percent = 100;
 
-    if (percent != last_reported_percent && (percent % 10 == 0 || last_reported_percent == -1)) {
+    // Bắn tiến độ mỗi 5% một lần (giống cơ chế Pump)
+    if (percent != last_reported_percent && (percent % 5 == 0 || last_reported_percent == -1)) {
       last_reported_percent = percent;
       ESP_LOGI(TAG, "📡 [OTA S3 PROGRESS] %d%% (%d/%d bytes)", percent, read_len, image_size);
       char prog_buf[256];
       snprintf(prog_buf, sizeof(prog_buf),
-               "{\"event\":\"ota_progress\",\"target\":\"esp32s3_gate\","
+               "{\"event\":\"ota_progress\",\"target\":\"%s\","
                "\"status\":\"in_progress\",\"percent\":%d,\"bytes\":%d,\"total\":%d}",
-               percent, read_len, image_size);
+               target, percent, read_len, image_size);
 #ifdef TOPIC_GATE_STATUS
       app_mqtt_publish(TOPIC_GATE_STATUS, prog_buf, 1, 0);
 #endif
@@ -162,8 +164,9 @@ static void ota_task(void *pvParameter) {
       }
       char stat_buf[256];
       snprintf(stat_buf, sizeof(stat_buf),
-               "{\"event\":\"ota_progress\",\"target\":\"esp32s3_gate\","
-               "\"status\":\"rebooting\",\"percent\":100,\"message\":\"Da ghi flash 100%%, rebooting...\"}");
+               "{\"event\":\"ota_progress\",\"target\":\"%s\","
+               "\"status\":\"rebooting\",\"percent\":100,\"version\":\"%s\",\"message\":\"Da ghi flash 100%%, rebooting...\"}",
+               target, s_current_ota_cfg.version);
 #ifdef TOPIC_GATE_STATUS
       app_mqtt_publish(TOPIC_GATE_STATUS, stat_buf, 1, 0);
 #endif
@@ -174,10 +177,28 @@ static void ota_task(void *pvParameter) {
     } else {
       ESP_LOGE(TAG, "❌ [OTA GATEWAY] Finish that bai: %s (0x%x)",
                esp_err_to_name(finish_err), finish_err);
+      char err_buf[256];
+      snprintf(err_buf, sizeof(err_buf),
+               "{\"event\":\"ota_progress\",\"target\":\"%s\","
+               "\"status\":\"failed\",\"percent\":%d,\"error\":\"%s\"}",
+               target, last_reported_percent >= 0 ? last_reported_percent : 0,
+               esp_err_to_name(finish_err));
+#ifdef TOPIC_GATE_STATUS
+      app_mqtt_publish(TOPIC_GATE_STATUS, err_buf, 1, 0);
+#endif
     }
   } else {
     esp_https_ota_abort(https_ota_handle);
     ESP_LOGE(TAG, "❌ [OTA GATEWAY] Nap that bai giua chung: %s", esp_err_to_name(err));
+    char err_buf[256];
+    snprintf(err_buf, sizeof(err_buf),
+             "{\"event\":\"ota_progress\",\"target\":\"%s\","
+             "\"status\":\"failed\",\"percent\":%d,\"error\":\"%s\"}",
+             target, last_reported_percent >= 0 ? last_reported_percent : 0,
+             esp_err_to_name(err));
+#ifdef TOPIC_GATE_STATUS
+    app_mqtt_publish(TOPIC_GATE_STATUS, err_buf, 1, 0);
+#endif
   }
 
   button_task_start();
@@ -211,3 +232,4 @@ esp_err_t ota_start(const ota_config_t *config) {
 
   return ESP_OK;
 }
+

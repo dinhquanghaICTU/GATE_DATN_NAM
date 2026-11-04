@@ -5,12 +5,10 @@
 #define DEVICE_TYPE "ESP32-S3 Gateway"
 #define BLE_DEVICE_NAME "GATE_S3_CONFIG"
 
-// Nạp thông tin bảo mật từ secrets.h (nếu có)
 #if __has_include("secrets.h")
 #include "secrets.h"
 #endif
 
-// Giá trị mặc định nếu secrets.h không có hoặc bị Git bỏ qua
 #ifndef HUNONIC_USER_PHONE
 #define HUNONIC_USER_PHONE "0358868830"
 #endif
@@ -37,4 +35,5 @@
 #define RELAY_1_PIN 38
 #define RELAY_2_PIN 39
 
-#endif /* __CONFIG_H__ */
+#endif
+

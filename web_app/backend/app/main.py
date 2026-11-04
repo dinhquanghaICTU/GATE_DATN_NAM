@@ -85,10 +85,20 @@ def health_check():
         "port": settings.PORT
     }
 
-# Mount giao diện Web tĩnh nếu có thư mục frontend/html (tiện lợi cho chạy local không cần Docker/Nginx)
+# Phục vụ thư mục firmware cho ESP32 tải OTA trực tiếp (giống cơ chế Pump)
 import os
 from fastapi.staticfiles import StaticFiles
 
+FIRMWARE_DIR = os.getenv("FIRMWARE_DIR")
+if not FIRMWARE_DIR:
+    if os.path.exists("/app/firmware_storage"):
+        FIRMWARE_DIR = "/app/firmware_storage"
+    else:
+        FIRMWARE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../firmware_storage"))
+os.makedirs(FIRMWARE_DIR, exist_ok=True)
+app.mount("/firmware", StaticFiles(directory=FIRMWARE_DIR), name="firmware")
+
+# Mount giao diện Web tĩnh nếu có thư mục frontend/html (tiện lợi cho chạy local không cần Docker/Nginx)
 frontend_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../frontend/html"))
 if os.path.exists(frontend_dir):
     app.mount("/", StaticFiles(directory=frontend_dir, html=True), name="frontend")

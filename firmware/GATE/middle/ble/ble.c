@@ -111,9 +111,11 @@ static int ble_gap_event(struct ble_gap_event *event, void *arg) {
     break;
 
   case BLE_GAP_EVENT_DISCONNECT:
-    ESP_LOGI(TAG, "Thiet bi da ngat ket noi BLE -> Tiep tuc phat quang ba...");
     if (!s_ble_stopping) {
+      ESP_LOGI(TAG, "Thiet bi da ngat ket noi BLE -> Tiep tuc phat quang ba...");
       ble_app_advertise();
+    } else {
+      ESP_LOGI(TAG, "Thiet bi da ngat ket noi BLE -> Da ngat BLE de nhuong kenh cho Wi-Fi.");
     }
     break;
 
@@ -249,3 +251,4 @@ esp_err_t ble_wifi_deinit(void) {
   }
   return ESP_FAIL;
 }
+

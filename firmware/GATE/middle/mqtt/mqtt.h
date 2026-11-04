@@ -46,4 +46,5 @@ bool app_mqtt_wait_for_connected(TickType_t timeout_ticks);
 }
 #endif
 
-#endif // __MQTT_H__
+#endif
+

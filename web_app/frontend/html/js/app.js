@@ -3953,6 +3953,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     updateSidebarActive("nav-firmware");
     refreshOtaTelemetry();
+    loadAdminFirmwares();
     window.location.hash = "firmware";
   }
 
@@ -4025,7 +4026,7 @@ document.addEventListener("DOMContentLoaded", () => {
         if (nodePkts) nodePkts.innerText = `${res.total_node_pkts || 0} pkts`;
 
         // Cập nhật trạng thái nạp nếu có
-        if (res.ota) {
+        if (res.ota && !otaPollInterval) {
           handleOtaProgressData(res.ota);
         }
       }
@@ -4033,6 +4034,120 @@ document.addEventListener("DOMContentLoaded", () => {
       console.warn("Lỗi tải thông tin OTA:", err);
     }
   }
+
+  // Tải danh sách các file firmware đã có trên VPS
+  async function loadAdminFirmwares() {
+    const tableBody = document.getElementById("ota-firmware-table-body");
+    const refreshIcon = document.getElementById("ota-files-refresh-icon");
+    if (refreshIcon) refreshIcon.classList.add("fa-spin");
+
+    try {
+      const res = await callApi("/api/gateway/ota/firmwares", "GET");
+      if (!tableBody) return;
+      if (!res || !Array.isArray(res) || res.length === 0) {
+        tableBody.innerHTML = `<tr><td colspan="4" style="text-align: center; padding: 22px; color: #94a3b8;">Chưa có bản firmware nào trong kho VPS. Hãy tải lên file .bin mới.</td></tr>`;
+        return;
+      }
+
+      tableBody.innerHTML = res.map(f => {
+        const sizeKB = (f.size / 1024).toFixed(1);
+        const sizeMB = (f.size / (1024 * 1024)).toFixed(2);
+        const displaySize = f.size > 1024 * 1024 ? `${sizeMB} MB` : `${sizeKB} KB`;
+        const timeStr = f.mtime ? new Date(f.mtime * 1000).toLocaleString("vi-VN") : "--";
+
+        // Tự động xác định target gợi ý dựa trên tên file
+        const isNode = f.filename.toLowerCase().includes("node") || f.filename.toLowerCase().includes("c3");
+        const defaultTarget = isNode ? "esp32c3_node" : "esp32s3_gate";
+
+        return `
+          <tr>
+            <td>
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <i class="fa-solid fa-file-code text-green" style="font-size: 1.15rem;"></i>
+                <div>
+                  <strong style="color: #0f172a; font-family: monospace;">${f.filename}</strong>
+                  <div style="font-size: 0.72rem; color: #94a3b8;">MD5: ${f.md5 ? f.md5.substring(0, 12) + '...' : '--'}</div>
+                </div>
+              </div>
+            </td>
+            <td><span class="font-mono" style="font-weight: 600;">${displaySize}</span></td>
+            <td style="color: #64748b; font-size: 0.8rem;">${timeStr}</td>
+            <td style="text-align: right;">
+              <a href="${f.download_url}" download class="btn-ota-table-action btn-ota-table-download" title="Tải về máy tính">
+                <i class="fa-solid fa-download"></i> Tải về
+              </a>
+              <button type="button" class="btn-ota-table-action btn-ota-table-apply" title="Nạp trực tiếp firmware này" onclick="window.quickFlashFirmware('${f.filename}', '${f.download_url}', ${f.size}, '${defaultTarget}')">
+                <i class="fa-solid fa-bolt"></i> Nạp ngay
+              </button>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    } catch (err) {
+      console.error("Lỗi khi tải kho firmware:", err);
+      if (tableBody) {
+        tableBody.innerHTML = `<tr><td colspan="4" style="text-align: center; padding: 18px; color: #ef4444;">Không thể tải danh sách firmware từ server!</td></tr>`;
+      }
+    } finally {
+      if (refreshIcon) {
+        setTimeout(() => refreshIcon.classList.remove("fa-spin"), 400);
+      }
+    }
+  }
+
+  // Kích hoạt nạp nhanh firmware có sẵn trong kho VPS
+  window.quickFlashFirmware = async function(filename, downloadUrl, size, suggestedTarget) {
+    if (suggestedTarget) {
+      setOtaTarget(suggestedTarget);
+    }
+    const targetLabel = currentOtaTarget === "esp32s3_gate" ? "Trạm Gateway ESP32-S3" : "Node Cảm Biến C3";
+
+    // Nhận diện version từ tên file (ví dụ: gate_v1.0.2.bin)
+    let versionGuess = "1.0.1";
+    const match = filename.match(/v?(\d+\.\d+(\.\d+)?)/i);
+    if (match && match[1]) {
+      versionGuess = match[1];
+    }
+
+    const versionInput = prompt(`Xác nhận nạp firmware "${filename}" cho ${targetLabel}.\nNhập phiên bản mục tiêu:`, versionGuess);
+    if (!versionInput) return;
+    const version = versionInput.trim();
+
+    const targetHost = window.location.hostname || "180.93.113.40";
+    const targetPort = window.location.port ? `:${window.location.port}` : "";
+    const fullDownloadUrl = downloadUrl.startsWith("http") ? downloadUrl : `http://${targetHost}${targetPort}${downloadUrl}`;
+
+    appendOtaLog(`Chuẩn bị nạp file "${filename}" (v${version}) cho ${targetLabel}...`, "info");
+    appendOtaLog(`URL Firmware: ${fullDownloadUrl}`, "info");
+
+    const initialVer = currentOtaTarget === "esp32s3_gate" 
+      ? (document.getElementById("ota-gw-ver-val")?.innerText?.replace(/^v/, '') || "1.0.0")
+      : (document.getElementById("ota-node-ver-val")?.innerText?.replace(/^v/, '') || "1.0.0");
+
+    try {
+      const res = await callApi("/api/gateway/ota/trigger", "POST", {
+        target: currentOtaTarget,
+        version: version,
+        url: fullDownloadUrl,
+        filename: filename,
+        size: size || 0,
+        md5: ""
+      });
+
+      if (res && res.success) {
+        showToast(res.message || "Đã gửi lệnh OTA thành công!", "success");
+        appendOtaLog(`Đã gửi lệnh OTA xuống thiết bị thành công!`, "success");
+        startOtaPolling(version, initialVer);
+      } else {
+        const errMsg = res?.detail || res?.message || "Không thể kích hoạt nạp OTA!";
+        showToast(errMsg, "error");
+        appendOtaLog(`Lỗi trigger OTA: ${errMsg}`, "error");
+      }
+    } catch (err) {
+      showToast("Lỗi kết nối máy chủ khi kích hoạt OTA!", "error");
+      appendOtaLog(`Lỗi mạng: ${err.message}`, "error");
+    }
+  };
 
   // Cập nhật giao diện tiến trình OTA
   function handleOtaProgressData(ota) {
@@ -4140,6 +4255,10 @@ document.addEventListener("DOMContentLoaded", () => {
       return;
     }
 
+    const initialVer = currentOtaTarget === "esp32s3_gate" 
+      ? (document.getElementById("ota-gw-ver-val")?.innerText?.replace(/^v/, '') || "1.0.0")
+      : (document.getElementById("ota-node-ver-val")?.innerText?.replace(/^v/, '') || "1.0.0");
+
     if (btnOtaUploadStart) {
       btnOtaUploadStart.disabled = true;
       btnOtaUploadStart.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> <span>Đang Tải Lên &amp; Nạp...</span>';
@@ -4166,7 +4285,8 @@ document.addEventListener("DOMContentLoaded", () => {
         showToast("Đã tải lên và phát lệnh OTA thành công! Đang theo dõi tiến trình...", "success");
         appendOtaLog(`Upload thành công: MD5 = ${res.file.md5}`, "success");
         appendOtaLog(`Lệnh OTA đã gửi xuống Gateway. URL: ${res.file.download_url}`, "success");
-        startOtaPolling();
+        loadAdminFirmwares();
+        startOtaPolling(version, initialVer);
       } else {
         const errMsg = res.detail || res.message || "Tải lên firmware thất bại!";
         showToast(errMsg, "error");
@@ -4198,6 +4318,10 @@ document.addEventListener("DOMContentLoaded", () => {
       return;
     }
 
+    const initialVer = currentOtaTarget === "esp32s3_gate" 
+      ? (document.getElementById("ota-gw-ver-val")?.innerText?.replace(/^v/, '') || "1.0.0")
+      : (document.getElementById("ota-node-ver-val")?.innerText?.replace(/^v/, '') || "1.0.0");
+
     if (btnOtaUrlStart) {
       btnOtaUrlStart.disabled = true;
       btnOtaUrlStart.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> <span>Đang Gửi Lệnh...</span>';
@@ -4215,7 +4339,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (res && res.success) {
       showToast(res.message, "success");
       appendOtaLog(`Lệnh OTA đã phát thành công tới ${currentOtaTarget}!`, "success");
-      startOtaPolling();
+      startOtaPolling(version, initialVer);
     } else {
       showToast("Không thể gửi lệnh OTA qua URL!", "error");
       appendOtaLog("Gửi lệnh OTA thất bại qua URL.", "error");
@@ -4227,18 +4351,161 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
-  // Khởi động vòng lặp polling tiến trình OTA
-  function startOtaPolling() {
+  // Khởi động vòng lặp polling tiến trình OTA (Theo chuẩn PUMP Watchdog)
+  function startOtaPolling(targetVer = null, initialVer = null) {
     if (otaPollInterval) clearInterval(otaPollInterval);
+
+    const cleanVer = (v) => String(v || '').trim().toLowerCase().replace(/^v/, '');
+    const tgtClean = cleanVer(targetVer);
+    const initClean = cleanVer(initialVer);
+
     let pollCount = 0;
+    let hasReachedReboot = false;
+    let rebootWaitCount = 0;
+    let lastProgressPct = -1;
+    let lastProgressBytes = -1;
+
+    const progressFill = document.getElementById("ota-progress-fill");
+    const progressPercent = document.getElementById("ota-progress-percent");
+    const progressTitle = document.getElementById("ota-progress-title");
+    const progressBytes = document.getElementById("ota-progress-bytes-text");
+    const statusBadge = document.getElementById("ota-progress-status-badge");
+
+    if (progressTitle) progressTitle.innerText = "Đang kết nối và chuẩn bị ghi Flash...";
+    if (statusBadge) {
+      statusBadge.className = "ota-status-pill ota-status-running";
+      statusBadge.innerText = "Đang nạp (0%)";
+    }
+
     otaPollInterval = setInterval(async () => {
       pollCount++;
+
+      // 1. KIỂM TRA PHIÊN BẢN THIẾT BỊ TRƯỚC TIÊN (PUMP Watchdog)
       await refreshOtaTelemetry();
+
+      const currentVerText = currentOtaTarget === "esp32s3_gate"
+        ? document.getElementById("ota-gw-ver-val")?.innerText
+        : document.getElementById("ota-node-ver-val")?.innerText;
+      const curClean = cleanVer(currentVerText);
+
+      const isVerChanged = Boolean(initClean && curClean && curClean !== initClean);
+      const isTargetMatched = Boolean(tgtClean && curClean && curClean === tgtClean && (initClean !== tgtClean || pollCount >= 3));
+
+      if (isVerChanged || isTargetMatched) {
+        clearInterval(otaPollInterval);
+        otaPollInterval = null;
+        isOtaInProgress = false;
+
+        if (progressFill) {
+          progressFill.style.width = "100%";
+          progressFill.style.background = "linear-gradient(90deg, #10b981 0%, #059669 100%)";
+        }
+        if (progressPercent) progressPercent.innerText = "100%";
+        if (statusBadge) {
+          statusBadge.className = "ota-status-pill ota-status-running";
+          statusBadge.style.background = "#ecfdf5";
+          statusBadge.style.color = "#059669";
+          statusBadge.innerText = "Thành công";
+        }
+        const displayVer = curClean || tgtClean;
+        if (progressTitle) {
+          progressTitle.innerHTML = `<i class="fa-solid fa-circle-check" style="color: #10b981;"></i> <b>NÂNG CẤP THÀNH CÔNG! Đã kích hoạt v${displayVer}</b>`;
+        }
+        showToast(`🎉 NÂNG CẤP THÀNH CÔNG! Thiết bị đã cập nhật lên phiên bản v${displayVer}!`, "success", 6000);
+        appendOtaLog(`[SUCCESS] NÂNG CẤP HOÀN TẤT! Firmware đang chạy: v${displayVer}.`, "success");
+        return;
+      }
+
+      // 2. Thăm dò API /api/gateway/ota/progress
+      try {
+        const progRes = await callApi("/api/gateway/ota/progress", "GET");
+        if (progRes) {
+          const pct = Math.max(0, Math.min(100, progRes.percent || 0));
+          const currentBytes = progRes.bytes || 0;
+
+          if (pct > lastProgressPct || currentBytes > lastProgressBytes) {
+            lastProgressPct = pct;
+            lastProgressBytes = currentBytes;
+            if (pct % 25 === 0 && pct > 0) {
+              appendOtaLog(`Tiến trình nạp Flash: ${pct}% (${(currentBytes / 1024).toFixed(0)} KB)`, "info");
+            }
+          }
+
+          if (progressFill) {
+            progressFill.style.width = `${pct}%`;
+            progressFill.style.background = "linear-gradient(90deg, #00b06f 0%, #10b981 100%)";
+          }
+          if (progressPercent) progressPercent.innerText = `${pct}%`;
+          if (statusBadge && progRes.status === "in_progress") {
+            statusBadge.className = "ota-status-pill ota-status-running";
+            statusBadge.innerText = `Đang nạp (${pct}%)`;
+          }
+
+          if (progRes.bytes && progRes.total) {
+            const kbRead = (progRes.bytes / 1024).toFixed(1);
+            const kbTotal = (progRes.total / 1024).toFixed(1);
+            if (progressBytes) progressBytes.innerText = `${kbRead} KB / ${kbTotal} KB`;
+          }
+
+          // Kiểm tra thất bại hoặc ROLLBACK
+          if (progRes.status === "failed" || (progRes.error && progRes.error.includes("ROLLBACK"))) {
+            clearInterval(otaPollInterval);
+            otaPollInterval = null;
+            isOtaInProgress = false;
+
+            if (progressFill) progressFill.style.background = "linear-gradient(90deg, #ef4444 0%, #b91c1c 100%)";
+            if (statusBadge) {
+              statusBadge.className = "ota-status-pill ota-status-failed";
+              statusBadge.innerText = "Thất bại";
+            }
+            const errMsg = progRes.message || (progRes.error === "ROLLBACK_APP_CRASHED"
+              ? "Bản firmware mới bị crash boot, đã kích hoạt Rollback về bản cũ!"
+              : progRes.error || "Nạp firmware thất bại!");
+
+            if (progressTitle) {
+              progressTitle.innerHTML = `<i class="fa-solid fa-triangle-exclamation" style="color: #ef4444;"></i> <b style="color: #ef4444;">${errMsg}</b>`;
+            }
+            showToast(`⚠️ CẬP NHẬT THẤT BẠI: ${errMsg}`, "error", 5000);
+            appendOtaLog(`[ERROR] Nạp thất bại: ${errMsg}`, "error");
+            return;
+          }
+
+          // Khi thiết bị ghi Flash xong 100% và đang reboot
+          if ((pct >= 100 || progRes.status === "rebooting") && progRes.status !== "success") {
+            hasReachedReboot = true;
+            if (progressFill) progressFill.style.width = "100%";
+            if (progressPercent) progressPercent.innerText = "100%";
+            if (statusBadge) {
+              statusBadge.className = "ota-status-pill ota-status-running";
+              statusBadge.innerText = "Rebooting...";
+            }
+            if (progressTitle) {
+              progressTitle.innerHTML = `<i class="fa-solid fa-arrows-rotate fa-spin" style="color: #0284c7;"></i> <b style="color: #0284c7;">Đã nạp xong 100%! Đang khởi động lại và kiểm tra an toàn...</b>`;
+            }
+          }
+        }
+      } catch (e) {
+        // bỏ qua lỗi mạng chập chờn
+      }
+
+      if (hasReachedReboot) {
+        rebootWaitCount++;
+      }
+
+      // Timeout watchdog: 120s
       if (pollCount > 120) {
         clearInterval(otaPollInterval);
         otaPollInterval = null;
+        isOtaInProgress = false;
+        appendOtaLog("[TIMEOUT] Quá thời gian chờ (120s). Vui lòng kiểm tra lại thiết bị.", "warn");
       }
-    }, 1500);
+    }, 1000);
+  }
+
+  // Gán sự kiện cho nút làm mới danh sách file firmware
+  const btnOtaRefreshFiles = document.getElementById("btn-ota-refresh-files");
+  if (btnOtaRefreshFiles) {
+    btnOtaRefreshFiles.addEventListener("click", loadAdminFirmwares);
   }
 
   // Gán sự kiện cho các thành phần điều khiển OTA

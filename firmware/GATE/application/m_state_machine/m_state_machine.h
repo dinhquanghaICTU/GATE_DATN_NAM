@@ -32,4 +32,5 @@ void m_state_machine_set_state(state_t state);
 state_t m_state_machine_get_state(void);
 void m_state_machine_reset_wifi(void);
 
-#endif // __M_STATE_MACHINE_H__
+#endif
+

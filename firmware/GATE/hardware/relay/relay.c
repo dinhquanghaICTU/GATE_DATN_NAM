@@ -31,13 +31,13 @@ void relay_init(void) {
 }
 
 void relay_turn_on(void) {
-  ESP_LOGI(TAG, "⚡ Bat Relay 1");
+  ESP_LOGI(TAG, "Bat Relay 1");
   gpio_set_level((gpio_num_t)RELAY_1_PIN, 1);
   s_relay_1_state = true;
 }
 
 void relay_turn_off(void) {
-  ESP_LOGI(TAG, "⚡ Tat Relay 1");
+  ESP_LOGI(TAG, "Tat Relay 1");
   gpio_set_level((gpio_num_t)RELAY_1_PIN, 0);
   s_relay_1_state = false;
 }
@@ -69,3 +69,4 @@ bool relay_get_channel(int ch) {
   if (ch == 2) return s_relay_2_state;
   return false;
 }
+

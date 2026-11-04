@@ -7,23 +7,28 @@
 #include "esp_websocket_client.h"
 #include "flash.h"
 #include "hunonic_crypto.h"
+#include "freertos/semphr.h"
 #include "mbedtls/base64.h"
 #include "mbedtls/md5.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <strings.h>
 
 static const char *TAG = "HUNONIC_BRIDGE";
 
 #define HUNONIC_API_LOGIN_URL "https://web.hunonic.com/api/api/auth/login"
+#define HUNONIC_API_HOME_LIST_URL                                               \
+  "https://web.hunonic.com/api/api/hun-api/home/list-home"
 #define HUNONIC_API_DEVICE_LIST_URL                                            \
-  "https://web.hunonic.com/api/api/hun-api/device/listDeviceByHome"
+  "https://web.hunonic.com/api/api/hun-api/device/listDeviceOfHomeSelect?home_id="
 #define HUNONIC_WS_GATEWAY_URL "wss://web.hunonic.com/gateway/ws?token="
 
 #define HTTP_RESP_BUFFER_SIZE 16384
 #define TOKEN_MAX_LEN 512
 #define PHONE_MAX_LEN 32
 #define PASS_MAX_LEN 64
+#define MAX_WS_SUBSCRIBED_TOPICS (MAX_HUNONIC_AC_DEVICES * 2 + 4)
 
 static char s_token[TOKEN_MAX_LEN] = {0};
 static char s_user_id[32] = {0};
@@ -32,18 +37,106 @@ static char s_password[PASS_MAX_LEN] = {0};
 static char s_ir_gateway_root_id[128] = {0};
 static char s_ir_gateway_topic_sub[128] = {0};
 static char s_ir_gateway_topic_pub[128] = {0};
+static bool s_is_ir_hub_online = false;
+static char s_selected_home_id[32];
 
 static void hunonic_ws_subscribe_all(void);
 static esp_err_t hunonic_ws_start(void);
 
 static hunonic_ac_device_t s_ac_devices[MAX_HUNONIC_AC_DEVICES];
 static int s_ac_count = 0;
+static hunonic_ac_device_t s_previous_ac_devices[MAX_HUNONIC_AC_DEVICES];
+static int s_previous_ac_count = 0;
 
 static esp_websocket_client_handle_t s_ws_client = NULL;
 static bool s_is_ws_connected = false;
+/* TLS sync needs sizeable mbedTLS buffers.  Never run it alongside command
+ * encryption, otherwise esp-aes can fail to allocate memory. */
+static SemaphoreHandle_t s_hunonic_io_mutex = NULL;
+static char s_ws_subscribed_topics[MAX_WS_SUBSCRIBED_TOPICS][128];
+static int s_ws_subscribed_topic_count = 0;
 
 static hunonic_ac_state_cb_t s_state_cb = NULL;
 static void *s_state_cb_arg = NULL;
+
+static const char *json_string(const cJSON *item) {
+  return (item && cJSON_IsString(item) && item->valuestring)
+             ? item->valuestring
+             : "";
+}
+
+static void json_id_to_string(const cJSON *item, char *out, size_t out_size) {
+  if (!out || out_size == 0) return;
+  out[0] = '\0';
+  if (item && cJSON_IsString(item) && item->valuestring) {
+    strlcpy(out, item->valuestring, out_size);
+  } else if (item && cJSON_IsNumber(item)) {
+    snprintf(out, out_size, "%d", item->valueint);
+  } else if (item && cJSON_IsObject(item)) {
+    json_id_to_string(cJSON_GetObjectItem(item, "value"), out, out_size);
+  }
+}
+
+static int json_to_int(const cJSON *item) {
+  if (!item) return 0;
+  if (cJSON_IsNumber(item)) return item->valueint;
+  return cJSON_IsString(item) && item->valuestring ? atoi(item->valuestring)
+                                                     : 0;
+}
+
+static bool is_ir_hub_type(const char *type) {
+  return type && (strcasecmp(type, "irwifi") == 0 ||
+                  strcasecmp(type, "irwifiv2") == 0);
+}
+
+static bool is_ac_category(const char *category) {
+  return category && (strcasecmp(category, "AC") == 0 ||
+                      strcasecmp(category, "air conditioner") == 0 ||
+                      strcasecmp(category, "airconditioner") == 0);
+}
+
+/* The official IR detail view groups children by their hub's topicsub.
+ * A stale irchild may remain in the home response after its hub is removed. */
+static cJSON *find_current_ir_parent(cJSON *rooms, cJSON *child) {
+  const char *child_topic = json_string(cJSON_GetObjectItem(child, "topicsub"));
+  char parent_id[128];
+  json_id_to_string(cJSON_GetObjectItem(child, "irchild_root_id"), parent_id, sizeof(parent_id));
+  cJSON *room = NULL;
+  cJSON_ArrayForEach(room, rooms) {
+    cJSON *device = NULL;
+    cJSON *devices = cJSON_GetObjectItem(room, "devices");
+    cJSON_ArrayForEach(device, devices) {
+      if (!is_ir_hub_type(json_string(cJSON_GetObjectItem(device, "type")))) continue;
+      const char *hub_topic = json_string(cJSON_GetObjectItem(device, "topicsub"));
+      if (child_topic[0] && hub_topic[0]) {
+        if (strcmp(child_topic, hub_topic) == 0) return device;
+        continue;
+      }
+      char hub_id[128];
+      json_id_to_string(cJSON_GetObjectItem(device, "id"), hub_id, sizeof(hub_id));
+      if (parent_id[0] && strcmp(parent_id, hub_id) == 0) return device;
+    }
+  }
+  return NULL;
+}
+
+static bool is_numeric_id(const char *value) {
+  if (!value || !value[0]) return false;
+  for (const char *p = value; *p; p++) {
+    if (*p < '0' || *p > '9') return false;
+  }
+  return true;
+}
+
+static const hunonic_ac_device_t *find_previous_ac(const char *id) {
+  for (int i = 0; id && i < s_previous_ac_count; i++) {
+    if (s_previous_ac_devices[i].is_valid &&
+        strcmp(s_previous_ac_devices[i].id, id) == 0) {
+      return &s_previous_ac_devices[i];
+    }
+  }
+  return NULL;
+}
 
 static void compute_md5(const char *input, char *output_32) {
   uint8_t digest[16];
@@ -83,8 +176,11 @@ static void parse_user_id_from_jwt(const char *token) {
     cJSON *jwt_json = cJSON_Parse((char *)payload_bytes);
     if (jwt_json) {
       cJSON *id_item = cJSON_GetObjectItem(jwt_json, "id");
-      if (id_item && id_item->valuestring) {
+      if (id_item && cJSON_IsString(id_item) && id_item->valuestring) {
         strncpy(s_user_id, id_item->valuestring, sizeof(s_user_id) - 1);
+        ESP_LOGI(TAG, "Da trich xuat user_id tu JWT: %s", s_user_id);
+      } else if (id_item && cJSON_IsNumber(id_item)) {
+        snprintf(s_user_id, sizeof(s_user_id), "%d", id_item->valueint);
         ESP_LOGI(TAG, "Da trich xuat user_id tu JWT: %s", s_user_id);
       }
       cJSON_Delete(jwt_json);
@@ -95,6 +191,7 @@ static void parse_user_id_from_jwt(const char *token) {
 typedef struct {
   char *buffer;
   int buffer_len;
+  bool overflow;
 } http_response_buffer_t;
 
 static esp_err_t http_event_handler(esp_http_client_event_t *evt) {
@@ -106,6 +203,7 @@ static esp_err_t http_event_handler(esp_http_client_event_t *evt) {
         resp->buffer_len += evt->data_len;
         resp->buffer[resp->buffer_len] = '\0';
       } else {
+        resp->overflow = true;
         ESP_LOGE(TAG, "HTTP Response vuot qua kich thuoc buffer (%d bytes)",
                  HTTP_RESP_BUFFER_SIZE);
       }
@@ -204,41 +302,134 @@ static esp_err_t hunonic_http_login(const char *phone, const char *password) {
   return ESP_OK;
 }
 
+/* Fetch a protected API resource and return its complete JSON body. */
+static esp_err_t hunonic_http_get(const char *url, char **out_response,
+                                  int *out_status) {
+  if (!url || !out_response || !out_status) return ESP_ERR_INVALID_ARG;
+  *out_response = NULL;
+  *out_status = 0;
+
+  char *response = malloc(HTTP_RESP_BUFFER_SIZE);
+  if (!response) return ESP_ERR_NO_MEM;
+  memset(response, 0, HTTP_RESP_BUFFER_SIZE);
+  http_response_buffer_t buffer = {.buffer = response, .buffer_len = 0};
+  esp_http_client_config_t config = {
+      .url = url,
+      .method = HTTP_METHOD_GET,
+      .crt_bundle_attach = esp_crt_bundle_attach,
+      .event_handler = http_event_handler,
+      .user_data = &buffer,
+      .timeout_ms = 15000,
+  };
+  esp_http_client_handle_t client = esp_http_client_init(&config);
+  if (!client) {
+    free(response);
+    return ESP_ERR_NO_MEM;
+  }
+  char auth_header[TOKEN_MAX_LEN + 16];
+  snprintf(auth_header, sizeof(auth_header), "Bearer %s", s_token);
+  esp_http_client_set_header(client, "Authorization", auth_header);
+  esp_http_client_set_header(client, "Accept", "application/json");
+  esp_http_client_set_header(client, "Cache-Control", "no-cache, no-store");
+  esp_http_client_set_header(client, "Pragma", "no-cache");
+
+  esp_err_t err = esp_http_client_perform(client);
+  *out_status = esp_http_client_get_status_code(client);
+  esp_http_client_cleanup(client);
+  *out_response = response;
+  return buffer.overflow ? ESP_ERR_INVALID_SIZE : err;
+}
+
+/* The current API requires a home_id before it returns rooms and devices. */
+static esp_err_t hunonic_get_first_home_id(char *out_home_id, size_t out_size,
+                                           int *out_status) {
+  char *response = NULL;
+  esp_err_t err = hunonic_http_get(HUNONIC_API_HOME_LIST_URL, &response,
+                                   out_status);
+  if (err != ESP_OK || *out_status != 200) {
+    free(response);
+    return ESP_FAIL;
+  }
+  cJSON *root = cJSON_Parse(response);
+  free(response);
+  if (!root) return ESP_FAIL;
+  cJSON *homes = cJSON_GetObjectItem(root, "data");
+  cJSON *home = homes && cJSON_IsArray(homes) ? cJSON_GetArrayItem(homes, 0) : NULL;
+  if (s_selected_home_id[0] && homes && cJSON_IsArray(homes)) {
+    cJSON *candidate = NULL;
+    home = NULL;
+    cJSON_ArrayForEach(candidate, homes) {
+      char candidate_id[32];
+      json_id_to_string(cJSON_GetObjectItem(candidate, "id"), candidate_id, sizeof(candidate_id));
+      if (strcmp(candidate_id, s_selected_home_id) == 0) { home = candidate; break; }
+    }
+  }
+  cJSON *id = home ? cJSON_GetObjectItem(home, "id") : NULL;
+  if (cJSON_IsString(id) && id->valuestring) {
+    strlcpy(out_home_id, id->valuestring, out_size);
+  } else if (cJSON_IsNumber(id)) {
+    snprintf(out_home_id, out_size, "%d", id->valueint);
+  }
+  cJSON_Delete(root);
+  if (out_home_id[0]) strlcpy(s_selected_home_id, out_home_id, sizeof(s_selected_home_id));
+  return out_home_id[0] ? ESP_OK : ESP_ERR_NOT_FOUND;
+}
+
+/* Match the official web client's selected-home snapshot validation. */
+static cJSON *select_valid_home_snapshot(cJSON *root, const char *home_id) {
+  cJSON *api_status = cJSON_GetObjectItem(root, "status");
+  cJSON *homes_data = cJSON_GetObjectItem(root, "data");
+  cJSON *selected_home = NULL;
+  cJSON *candidate = NULL;
+  if (cJSON_IsTrue(api_status) && cJSON_IsArray(homes_data)) {
+    cJSON_ArrayForEach(candidate, homes_data) {
+      char candidate_id[32];
+      json_id_to_string(cJSON_GetObjectItem(candidate, "id"), candidate_id, sizeof(candidate_id));
+      if (strcmp(candidate_id, home_id) == 0) { selected_home = candidate; break; }
+    }
+  }
+  cJSON *selected_rooms = selected_home ? cJSON_GetObjectItem(selected_home, "rooms") : NULL;
+  bool snapshot_valid = cJSON_IsArray(selected_rooms);
+  cJSON *validated_room = NULL;
+  if (snapshot_valid) {
+    cJSON_ArrayForEach(validated_room, selected_rooms) {
+      if (!cJSON_IsArray(cJSON_GetObjectItem(validated_room, "devices"))) {
+        snapshot_valid = false;
+        break;
+      }
+    }
+  }
+  return snapshot_valid ? selected_home : NULL;
+}
+
 esp_err_t hunonic_bridge_sync_devices(void) {
   if (strlen(s_token) == 0) {
     ESP_LOGW(TAG, "Chua co token, khong the sync thiet bi");
     return ESP_ERR_INVALID_STATE;
   }
 
+  if (!s_hunonic_io_mutex) {
+    s_hunonic_io_mutex = xSemaphoreCreateMutex();
+    if (!s_hunonic_io_mutex) return ESP_ERR_NO_MEM;
+  }
+  xSemaphoreTake(s_hunonic_io_mutex, portMAX_DELAY);
+
   char *resp_buf = NULL;
   for (int attempt = 0; attempt < 2; attempt++) {
-    resp_buf = (char *)malloc(HTTP_RESP_BUFFER_SIZE);
-    if (!resp_buf)
-      return ESP_ERR_NO_MEM;
-    memset(resp_buf, 0, HTTP_RESP_BUFFER_SIZE);
-
-    http_response_buffer_t resp = {.buffer = resp_buf, .buffer_len = 0};
-
-    esp_http_client_config_t config = {
-        .url = HUNONIC_API_DEVICE_LIST_URL,
-        .method = HTTP_METHOD_GET,
-        .crt_bundle_attach = esp_crt_bundle_attach,
-        .event_handler = http_event_handler,
-        .user_data = &resp,
-        .timeout_ms = 15000,
-    };
-
-    esp_http_client_handle_t client = esp_http_client_init(&config);
-
-    char auth_header[TOKEN_MAX_LEN + 16];
-    snprintf(auth_header, sizeof(auth_header), "Bearer %s", s_token);
-    esp_http_client_set_header(client, "Authorization", auth_header);
-    esp_http_client_set_header(client, "Accept", "application/json");
-
-    ESP_LOGI(TAG, "Dang dong bo danh sach thiet bi tu Hunonic Cloud (lan %d)...", attempt + 1);
-    esp_err_t err = esp_http_client_perform(client);
-    int status_code = esp_http_client_get_status_code(client);
-    esp_http_client_cleanup(client);
+    char home_id[32] = {0};
+    int status_code = 0;
+    ESP_LOGI(TAG, "Dang lay danh sach nha Hunonic (lan %d)...", attempt + 1);
+    esp_err_t err = hunonic_get_first_home_id(home_id, sizeof(home_id),
+                                               &status_code);
+    if (err == ESP_OK) {
+      char device_url[192];
+      /* Same force-refresh parameter used by the Hunonic web client. */
+      snprintf(device_url, sizeof(device_url), "%s%s&_ts=%lld",
+               HUNONIC_API_DEVICE_LIST_URL, home_id,
+               (long long)esp_timer_get_time());
+      ESP_LOGI(TAG, "Dang dong bo thiet bi Hunonic cua home %s...", home_id);
+      err = hunonic_http_get(device_url, &resp_buf, &status_code);
+    }
 
     if (err != ESP_OK || status_code != 200) {
       ESP_LOGE(TAG, "Sync thiet bi that bai: err=%d, HTTP status=%d", err,
@@ -249,9 +440,11 @@ esp_err_t hunonic_bridge_sync_devices(void) {
       free(resp_buf);
       resp_buf = NULL;
 
+      /* Hunonic currently reports a replaced/invalidated session as either
+       * 401/403 or HTTP 500.  Re-login once so the Gateway can recover after
+       * another client signs in with the same account. */
       if (attempt == 0 &&
-          (status_code == 401 || status_code == 403 || status_code == 500 ||
-           status_code == 400) &&
+          (status_code == 401 || status_code == 403 || status_code == 500) &&
           strlen(s_phone) > 0 && strlen(s_password) > 0) {
         ESP_LOGW(
             TAG,
@@ -261,19 +454,19 @@ esp_err_t hunonic_bridge_sync_devices(void) {
                       "& da thiet bi khac ra...");
 
         if (hunonic_http_login(s_phone, s_password) == ESP_OK) {
-          ESP_LOGI(TAG, "Re-Login thanh cong! Khoi dong lai WebSocket voi "
-                        "Token chu quyen moi...");
-          hunonic_ws_start();
+          ESP_LOGI(TAG, "Re-login thanh cong, thu dong bo lai voi token moi...");
           continue;
         }
       }
+      xSemaphoreGive(s_hunonic_io_mutex);
       return ESP_FAIL;
     }
 
-    break; // Sync HTTP thanh cong -> tiep tuc xu ly JSON
+    break;
   }
 
   if (!resp_buf) {
+    xSemaphoreGive(s_hunonic_io_mutex);
     return ESP_FAIL;
   }
 
@@ -281,16 +474,34 @@ esp_err_t hunonic_bridge_sync_devices(void) {
   free(resp_buf);
   if (!root) {
     ESP_LOGE(TAG, "Parse JSON listDeviceByHome that bai");
+    xSemaphoreGive(s_hunonic_io_mutex);
     return ESP_FAIL;
   }
 
+  /* Validate the entire selected home before replacing the last good list.
+   * HTTP 200 alone can contain an API error or a different home's snapshot. */
+  cJSON *selected_home = select_valid_home_snapshot(root, s_selected_home_id);
+  if (!selected_home) {
+    ESP_LOGE(TAG, "Invalid fresh snapshot for selected home %s; preserving last good inventory", s_selected_home_id);
+    cJSON_Delete(root);
+    xSemaphoreGive(s_hunonic_io_mutex);
+    return ESP_FAIL;
+  }
+
+  cJSON *selected_rooms = cJSON_GetObjectItem(selected_home, "rooms");
+  memcpy(s_previous_ac_devices, s_ac_devices, sizeof(s_ac_devices));
+  s_previous_ac_count = s_ac_count;
   s_ac_count = 0;
   memset(s_ac_devices, 0, sizeof(s_ac_devices));
 
   cJSON *data_arr = cJSON_GetObjectItem(root, "data");
   if (data_arr && cJSON_IsArray(data_arr)) {
+    bool found_ir_in_sync = false;
+    bool ir_online_in_sync = false;
+
     cJSON *home = NULL;
     cJSON_ArrayForEach(home, data_arr) {
+      if (home != selected_home) continue;
       cJSON *uid = cJSON_GetObjectItem(home, "user_id");
       if (uid && uid->valuestring && strlen(s_user_id) == 0) {
         strncpy(s_user_id, uid->valuestring, sizeof(s_user_id) - 1);
@@ -307,16 +518,30 @@ esp_err_t hunonic_bridge_sync_devices(void) {
               cJSON *type = cJSON_GetObjectItem(dev, "type");
               cJSON *root_type = cJSON_GetObjectItem(dev, "root_type");
               cJSON *root_id = cJSON_GetObjectItem(dev, "root_id");
+              cJSON *irchild_root_id =
+                  cJSON_GetObjectItem(dev, "irchild_root_id");
+              cJSON *dev_id_obj = cJSON_GetObjectItem(dev, "id");
+              char dev_id_str[sizeof(s_ir_gateway_root_id)] = {0};
+              char root_id_str[sizeof(s_ir_gateway_root_id)] = {0};
+              char irchild_root_id_str[sizeof(s_ir_gateway_root_id)] = {0};
+              json_id_to_string(dev_id_obj, dev_id_str, sizeof(dev_id_str));
+              json_id_to_string(root_id, root_id_str, sizeof(root_id_str));
+              json_id_to_string(irchild_root_id, irchild_root_id_str,
+                                sizeof(irchild_root_id_str));
+              const char *type_str = json_string(type);
+              const char *root_type_str = json_string(root_type);
 
-              if (type && type->valuestring &&
-                  (strcmp(type->valuestring, "irwifi") == 0 ||
-                   (root_type &&
-                    strcmp(root_type->valuestring, "irwifiv2") == 0))) {
-                if (root_id && root_id->valuestring) {
-                  strncpy(s_ir_gateway_root_id, root_id->valuestring,
+              /* Hunonic's root_id field on an IR hub may be an encrypted
+               * transport key, not its numeric device ID.  AC_CONTROL needs
+               * the hub device id (for example 3987670), so prefer dev.id. */
+              bool is_ir_hub = is_ir_hub_type(type_str);
+              if (is_ir_hub) {
+                if (is_numeric_id(dev_id_str)) {
+                  strncpy(s_ir_gateway_root_id, dev_id_str,
                           sizeof(s_ir_gateway_root_id) - 1);
-                  ESP_LOGI(TAG, "Phat hien Tram IR Hub: root_id=%s",
-                           s_ir_gateway_root_id);
+                } else if (is_numeric_id(root_id_str)) {
+                  strncpy(s_ir_gateway_root_id, root_id_str,
+                          sizeof(s_ir_gateway_root_id) - 1);
                 }
                 cJSON *hub_sub = cJSON_GetObjectItem(dev, "topicsub");
                 cJSON *hub_pub = cJSON_GetObjectItem(dev, "topicpub");
@@ -328,21 +553,56 @@ esp_err_t hunonic_bridge_sync_devices(void) {
                   strncpy(s_ir_gateway_topic_pub, hub_pub->valuestring,
                           sizeof(s_ir_gateway_topic_pub) - 1);
                 }
+
+                cJSON *st = cJSON_GetObjectItem(dev, "state");
+                bool is_st_online = false;
+                if (st) {
+                  if (cJSON_IsString(st) && st->valuestring) {
+                    is_st_online = (strcmp(st->valuestring, "1") == 0);
+                  } else if (cJSON_IsNumber(st)) {
+                    is_st_online = (st->valueint == 1);
+                  }
+                }
+                found_ir_in_sync = true;
+                ir_online_in_sync = is_st_online;
+                ESP_LOGI(TAG, "Hunonic API: Tram IR Hub [%s]: %s (state raw: %s)",
+                         s_ir_gateway_root_id,
+                         is_st_online ? "ONLINE (Dang hoat dong)" : "OFFLINE (Rut nguon / Chua cam dien)",
+                         st ? (cJSON_IsString(st) ? st->valuestring : "num") : "null");
               }
 
               cJSON *cat = cJSON_GetObjectItem(dev, "category");
               cJSON *cat_name =
                   cat ? cJSON_GetObjectItem(cat, "name_en") : NULL;
-              bool is_ac = false;
-              if (cat_name && cat_name->valuestring &&
-                  strcmp(cat_name->valuestring, "AC") == 0) {
-                is_ac = true;
-              } else if (type && type->valuestring &&
-                         strcmp(type->valuestring, "irchild") == 0) {
-                is_ac = true;
+              /* Hunonic has changed category strings across API versions.
+               * An irchild beneath an IR hub is still an AC even if category
+               * metadata is absent, so detect both representations. */
+              bool is_ac = !is_ir_hub &&
+                           (strcasecmp(type_str, "irchild") == 0 ||
+                            is_ac_category(json_string(cat_name)) ||
+                            (root_id_str[0] && is_ir_hub_type(root_type_str)));
+
+              cJSON *parent_hub = is_ac ? find_current_ir_parent(selected_rooms, dev) : NULL;
+              if (is_ac && !parent_hub) {
+                ESP_LOGW(TAG, "[SYNC SKIP ORPHAN] AC id=%s has no matching IR hub in home %s",
+                         dev_id_str, s_selected_home_id);
+                continue;
+              }
+              if (is_ac) {
+                char parent_id[128];
+                json_id_to_string(cJSON_GetObjectItem(parent_hub, "id"), parent_id, sizeof(parent_id));
+                ESP_LOGI(TAG, "[SYNC AC PARENT] AC id=%s hub=%s", dev_id_str, parent_id);
               }
 
-              if (is_ac && s_ac_count < MAX_HUNONIC_AC_DEVICES) {
+              bool duplicate = false;
+              for (int i = 0; i < s_ac_count; i++) {
+                if (dev_id_str[0] && strcmp(s_ac_devices[i].id, dev_id_str) == 0) {
+                  duplicate = true;
+                  break;
+                }
+              }
+
+              if (is_ac && !duplicate && s_ac_count < MAX_HUNONIC_AC_DEVICES) {
                 hunonic_ac_device_t *ac = &s_ac_devices[s_ac_count];
                 cJSON *id = cJSON_GetObjectItem(dev, "id");
                 cJSON *name = cJSON_GetObjectItem(dev, "name");
@@ -353,8 +613,21 @@ esp_err_t hunonic_bridge_sync_devices(void) {
                 cJSON *brand_id =
                     brand_obj ? cJSON_GetObjectItem(brand_obj, "id") : NULL;
 
-                if (id && id->valuestring)
-                  strncpy(ac->id, id->valuestring, sizeof(ac->id) - 1);
+                json_id_to_string(id, ac->id, sizeof(ac->id));
+                /* Some API revisions provide a numeric irchild_root_id;
+                 * others provide root_id as an opaque routing token. */
+                if (is_numeric_id(irchild_root_id_str)) {
+                  strlcpy(ac->root_id, irchild_root_id_str,
+                          sizeof(ac->root_id));
+                  ac->root_id_is_encrypted = false;
+                } else if (strchr(root_id_str, ':') != NULL) {
+                  strlcpy(ac->root_id, root_id_str, sizeof(ac->root_id));
+                  ac->root_id_is_encrypted = true;
+                } else {
+                  strlcpy(ac->root_id, s_ir_gateway_root_id,
+                          sizeof(ac->root_id));
+                  ac->root_id_is_encrypted = false;
+                }
                 if (name && name->valuestring)
                   strncpy(ac->name, name->valuestring, sizeof(ac->name) - 1);
                 if (t_sub && t_sub->valuestring)
@@ -363,10 +636,10 @@ esp_err_t hunonic_bridge_sync_devices(void) {
                 if (t_pub && t_pub->valuestring)
                   strncpy(ac->topic_pub, t_pub->valuestring,
                           sizeof(ac->topic_pub) - 1);
-                if (brand_id && brand_id->valuestring)
-                  ac->brand = atoi(brand_id->valuestring);
+                ac->brand = json_to_int(brand_id);
+                if (ac->brand == 0)
+                  ac->brand = json_to_int(brand_obj);
 
-                bool state_changed = false;
                 if (val && val->valuestring) {
                   cJSON *v_json = cJSON_Parse(val->valuestring);
                   if (v_json) {
@@ -375,24 +648,20 @@ esp_err_t hunonic_bridge_sync_devices(void) {
                     cJSON *m = cJSON_GetObjectItem(v_json, "mode");
                     cJSON *f = cJSON_GetObjectItem(v_json, "fan");
                     cJSON *b = cJSON_GetObjectItem(v_json, "brand");
-                    if (p && ac->power != p->valueint) {
+                    if (p) {
                       ac->power = p->valueint;
-                      state_changed = true;
                     }
-                    if (t && ac->temp != t->valueint) {
+                    if (t) {
                       ac->temp = t->valueint;
-                      state_changed = true;
                     }
-                    if (m && ac->mode != m->valueint) {
+                    if (m) {
                       ac->mode = m->valueint;
-                      state_changed = true;
                     }
-                    if (f && ac->fan != f->valueint) {
+                    if (f) {
                       ac->fan = f->valueint;
-                      state_changed = true;
                     }
                     if (b && ac->brand == 0)
-                      ac->brand = b->valueint;
+                      ac->brand = json_to_int(b);
                     cJSON_Delete(v_json);
                   }
                 }
@@ -404,12 +673,6 @@ esp_err_t hunonic_bridge_sync_devices(void) {
                          ac->id, ac->name, ac->brand, ac->power, ac->temp,
                          ac->mode, ac->fan);
 
-                if (state_changed && s_state_cb) {
-                  ESP_LOGI(TAG, "🔄 [HTTP SYNC DETECT] Trang thai thay doi -> "
-                                "Trigger State CB!");
-                  s_state_cb(ac, s_state_cb_arg);
-                }
-
                 s_ac_count++;
               }
             }
@@ -417,14 +680,45 @@ esp_err_t hunonic_bridge_sync_devices(void) {
         }
       }
     }
+
+    if (found_ir_in_sync) {
+      s_is_ir_hub_online = ir_online_in_sync;
+    } else {
+      s_is_ir_hub_online = false;
+      ESP_LOGW(TAG, "Khong tim thay Tram IR Hub trong tai khoan Hunonic -> OFFLINE");
+    }
   }
 
   cJSON_Delete(root);
+  for (int i = 0; i < s_previous_ac_count; ++i) {
+    bool found = false;
+    for (int j = 0; j < s_ac_count; ++j) {
+      if (strcmp(s_previous_ac_devices[i].id, s_ac_devices[j].id) == 0) { found = true; break; }
+    }
+    if (!found) ESP_LOGI(TAG, "[SYNC REMOVED] AC id=%s", s_previous_ac_devices[i].id);
+  }
+  for (int i = 0; i < s_ac_count; ++i) {
+    const hunonic_ac_device_t *old = find_previous_ac(s_ac_devices[i].id);
+    const hunonic_ac_device_t *ac = &s_ac_devices[i];
+    if (s_state_cb && (!old || old->power != ac->power || old->temp != ac->temp ||
+                      old->mode != ac->mode || old->fan != ac->fan || old->brand != ac->brand)) {
+      s_state_cb(ac, s_state_cb_arg);
+    }
+  }
   ESP_LOGI(TAG, "Dong bo hoan tat: tim thay %d dieu hoa", s_ac_count);
 
   if (s_is_ws_connected) {
     hunonic_ws_subscribe_all();
+  } else if (!s_ws_client) {
+    /* A later periodic sync can recover a failed first login without rebooting. */
+    esp_err_t ws_err = hunonic_ws_start();
+    if (ws_err != ESP_OK) {
+      ESP_LOGE(TAG, "Khoi dong WebSocket sau khi sync that bai: %d", ws_err);
+      xSemaphoreGive(s_hunonic_io_mutex);
+      return ws_err;
+    }
   }
+  xSemaphoreGive(s_hunonic_io_mutex);
   return ESP_OK;
 }
 
@@ -434,6 +728,12 @@ static int s_ws_rx_len = 0;
 static esp_err_t hunonic_ws_subscribe(const char *topic) {
   if (!s_is_ws_connected || !s_ws_client || !topic || strlen(topic) == 0) {
     return ESP_ERR_INVALID_STATE;
+  }
+
+  for (int i = 0; i < s_ws_subscribed_topic_count; i++) {
+    if (strcmp(s_ws_subscribed_topics[i], topic) == 0) {
+      return ESP_OK;
+    }
   }
 
   int64_t now_ms = (int64_t)(esp_timer_get_time() / 1000);
@@ -482,12 +782,19 @@ static esp_err_t hunonic_ws_subscribe(const char *topic) {
   snprintf(ws_frame, 1200, "{\"data\":\"%s\"}", enc_b64);
   free(enc_b64);
 
-  ESP_LOGI(TAG, "📡 -> [WS SUBSCRIBE] Topic: %s", topic);
+  ESP_LOGI(TAG, "-> [WS SUBSCRIBE] Topic: %s", topic);
   int sent = esp_websocket_client_send_text(
       s_ws_client, ws_frame, strlen(ws_frame), pdMS_TO_TICKS(2000));
   free(ws_frame);
 
-  return (sent >= 0) ? ESP_OK : ESP_FAIL;
+  if (sent >= 0) {
+    if (s_ws_subscribed_topic_count < MAX_WS_SUBSCRIBED_TOPICS) {
+      strlcpy(s_ws_subscribed_topics[s_ws_subscribed_topic_count++], topic,
+              sizeof(s_ws_subscribed_topics[0]));
+    }
+    return ESP_OK;
+  }
+  return ESP_FAIL;
 }
 
 static void hunonic_ws_subscribe_all(void) {
@@ -496,7 +803,6 @@ static void hunonic_ws_subscribe_all(void) {
   }
   ESP_LOGI(TAG, "=== Bat dau Subscribe cac topic Hunonic Cloud ===");
 
-  // 1. Subscribe topic cua cac thiet bi dieu hoa
   for (int i = 0; i < s_ac_count; i++) {
     if (s_ac_devices[i].is_valid) {
       if (strlen(s_ac_devices[i].topic_sub) > 0) {
@@ -510,7 +816,6 @@ static void hunonic_ws_subscribe_all(void) {
     }
   }
 
-  // 2. Subscribe topic cua tram IR Hub cha (neu co)
   if (strlen(s_ir_gateway_topic_sub) > 0) {
     hunonic_ws_subscribe(s_ir_gateway_topic_sub);
     vTaskDelay(pdMS_TO_TICKS(40));
@@ -526,7 +831,6 @@ static void update_ac_state_and_notify(const char *device_id, int brand,
                                        const char *source_event) {
   hunonic_ac_device_t *target = NULL;
 
-  // 1. Uu tien tim theo device_id neu co
   if (device_id && strlen(device_id) > 0) {
     for (int i = 0; i < s_ac_count; i++) {
       if (s_ac_devices[i].is_valid &&
@@ -537,8 +841,7 @@ static void update_ac_state_and_notify(const char *device_id, int brand,
     }
   }
 
-  // 2. Neu thong diep khong co device_id, tim theo ma Brand (vi du 104 = Funiki, 117 = Mirage)
-  if (!target && brand > 0) {
+  if (!target && (!device_id || !device_id[0]) && brand > 0) {
     for (int i = 0; i < s_ac_count; i++) {
       if (s_ac_devices[i].is_valid && s_ac_devices[i].brand == brand) {
         target = &s_ac_devices[i];
@@ -547,8 +850,7 @@ static void update_ac_state_and_notify(const char *device_id, int brand,
     }
   }
 
-  // 3. Neu khong tim thay theo ID va Brand, nhung chi co duy nhat 1 dieu hoa
-  if (!target && s_ac_count == 1 && s_ac_devices[0].is_valid) {
+  if (!target && (!device_id || !device_id[0]) && s_ac_count == 1 && s_ac_devices[0].is_valid) {
     target = &s_ac_devices[0];
   }
 
@@ -577,7 +879,7 @@ static void update_ac_state_and_notify(const char *device_id, int brand,
   }
 
   ESP_LOGI(TAG,
-           "🎯 [2-WAY SYNC OK] Dieu hoa [%s] '%s' -> Nguon: %s | "
+           "[2-WAY SYNC OK] Dieu hoa [%s] '%s' -> Nguon: %s | "
            "Power=%d, Temp=%d, Mode=%d, Fan=%d (Thay doi: %s)",
            target->id, target->name, source_event ? source_event : "UNKNOWN",
            target->power, target->temp, target->mode, target->fan,
@@ -602,7 +904,6 @@ static void parse_ws_device_message(cJSON *msg) {
   int power = -1, temp = -1, mode = -1, fan = -1, brand = -1;
   bool found_state = false;
 
-  // 1. Truong hop AC_STATE (IR Hub phan hoi ket qua sau khi ban IR)
   if (strcmp(evt_str, "AC_STATE") == 0) {
     cJSON *meta = cJSON_GetObjectItem(msg, "metaData");
     if (meta) {
@@ -637,7 +938,7 @@ static void parse_ws_device_message(cJSON *msg) {
       }
     }
   }
-  // 2. Truong hop AC_CONTROL (App Hunonic hoac client khac dieu khien)
+
   else if (strcmp(evt_str, "AC_CONTROL") == 0) {
     cJSON *action = cJSON_GetObjectItem(msg, "action");
     if (action) {
@@ -673,7 +974,6 @@ static void parse_ws_device_message(cJSON *msg) {
     }
   }
 
-  // 3. Truong hop thong diep truc tiep co power / action
   if (!found_state) {
     cJSON *b = cJSON_GetObjectItem(msg, "brand");
     cJSON *p = cJSON_GetObjectItem(msg, "power");
@@ -704,7 +1004,6 @@ static void unpack_and_dispatch(cJSON *obj) {
   if (!obj)
     return;
 
-  // Neu obj co payload (dang pubsub {topic:..., payload:...})
   cJSON *payload = cJSON_GetObjectItem(obj, "payload");
   if (payload) {
     if (cJSON_IsString(payload) && payload->valuestring) {
@@ -719,7 +1018,6 @@ static void unpack_and_dispatch(cJSON *obj) {
     return;
   }
 
-  // Neu obj co data (envelope {data:..., ts:...})
   cJSON *d = cJSON_GetObjectItem(obj, "data");
   if (d) {
     if (cJSON_IsString(d) && d->valuestring) {
@@ -734,7 +1032,6 @@ static void unpack_and_dispatch(cJSON *obj) {
     return;
   }
 
-  // Neu obj la message cuoi cung
   parse_ws_device_message(obj);
 }
 
@@ -775,14 +1072,17 @@ static void websocket_event_handler(void *handler_args, esp_event_base_t base,
   esp_websocket_event_data_t *data = (esp_websocket_event_data_t *)event_data;
   switch (event_id) {
   case WEBSOCKET_EVENT_CONNECTED:
-    ESP_LOGI(TAG, "✅ WebSocket Hunonic DA KET NOI THANH CONG!");
+    ESP_LOGI(TAG, "WebSocket Hunonic DA KET NOI THANH CONG!");
     s_is_ws_connected = true;
+    s_ws_subscribed_topic_count = 0;
+    memset(s_ws_subscribed_topics, 0, sizeof(s_ws_subscribed_topics));
     hunonic_ws_subscribe_all();
     break;
 
   case WEBSOCKET_EVENT_DISCONNECTED:
-    ESP_LOGW(TAG, "⚠️ WebSocket Hunonic bi mat ket noi!");
+    ESP_LOGW(TAG, "WebSocket Hunonic bi mat ket noi!");
     s_is_ws_connected = false;
+    s_ws_subscribed_topic_count = 0;
     if (s_ws_rx_buf) {
       free(s_ws_rx_buf);
       s_ws_rx_buf = NULL;
@@ -792,7 +1092,7 @@ static void websocket_event_handler(void *handler_args, esp_event_base_t base,
 
   case WEBSOCKET_EVENT_DATA:
     if (data->data_len > 0) {
-      // Xu ly ghep frame WebSocket phong truong hop bi phan manh
+
       if (data->payload_offset == 0) {
         if (s_ws_rx_buf)
           free(s_ws_rx_buf);
@@ -807,7 +1107,6 @@ static void websocket_event_handler(void *handler_args, esp_event_base_t base,
         s_ws_rx_buf[s_ws_rx_len] = '\0';
       }
 
-      // Khi da nhan du toan bo frame
       if (s_ws_rx_buf && (s_ws_rx_len >= data->payload_len)) {
         cJSON *root = cJSON_Parse(s_ws_rx_buf);
         if (root) {
@@ -884,21 +1183,70 @@ esp_err_t hunonic_bridge_control(const char *device_id, int power, int temp,
   }
 
   hunonic_ac_device_t *target = NULL;
-  for (int i = 0; i < s_ac_count; i++) {
-    if (s_ac_devices[i].is_valid &&
-        strcmp(s_ac_devices[i].id, device_id) == 0) {
-      target = &s_ac_devices[i];
-      break;
+  if (device_id && strlen(device_id) > 0) {
+    for (int i = 0; i < s_ac_count; i++) {
+      if (s_ac_devices[i].is_valid &&
+          strcmp(s_ac_devices[i].id, device_id) == 0) {
+        target = &s_ac_devices[i];
+        break;
+      }
     }
   }
 
+  /* A device may have been added in the Hunonic app since the last periodic
+   * sync.  Refresh once and resolve its exact ID before sending a command. */
+  if (!target && device_id && strlen(device_id) > 0) {
+    ESP_LOGI(TAG, "ID dieu hoa [%s] chua co trong cache, dong bo ngay...",
+             device_id);
+    esp_err_t sync_err = hunonic_bridge_sync_devices();
+    if (sync_err != ESP_OK) {
+      ESP_LOGE(TAG, "Khong the dong bo de tim dieu hoa [%s]: %d", device_id,
+               sync_err);
+      return sync_err;
+    }
+    for (int i = 0; i < s_ac_count; i++) {
+      if (s_ac_devices[i].is_valid &&
+          strcmp(s_ac_devices[i].id, device_id) == 0) {
+        target = &s_ac_devices[i];
+        break;
+      }
+    }
+  }
+
+  /* Compatibility path for callers that intentionally omit an ID.  Never
+   * fall back to the first AC when a concrete, unknown ID was requested. */
+  if (!target && (!device_id || strlen(device_id) == 0) &&
+      s_ac_count > 0 && s_ac_devices[0].is_valid) {
+    target = &s_ac_devices[0];
+  }
+
   if (!target) {
-    ESP_LOGE(TAG, "Khong tim thay dieu hoa voi ID: %s", device_id);
+    ESP_LOGE(TAG, "Khong tim thay dieu hoa voi ID: %s", device_id ? device_id : "(null)");
     return ESP_ERR_NOT_FOUND;
   }
 
+  if (!s_hunonic_io_mutex) {
+    s_hunonic_io_mutex = xSemaphoreCreateMutex();
+    if (!s_hunonic_io_mutex) return ESP_ERR_NO_MEM;
+  }
+  /* If a periodic TLS sync is in progress, wait rather than dropping the
+   * command because mbedTLS/AES compete for the same heap. */
+  xSemaphoreTake(s_hunonic_io_mutex, portMAX_DELAY);
+
   int64_t now_ms = (int64_t)(esp_timer_get_time() / 1000);
-  const char *r_id = s_ir_gateway_root_id[0] ? s_ir_gateway_root_id : "";
+  /* Captured from the official Hunonic web client: AC_CONTROL always wraps
+   * the numeric IR hub device ID in a fresh encrypted root_id token. */
+  const char *r_id = s_ir_gateway_root_id;
+  char encrypted_root_id[256] = {0};
+  if (!is_numeric_id(r_id) ||
+      hunonic_crypto_encrypt(r_id, encrypted_root_id,
+                             sizeof(encrypted_root_id)) != ESP_OK) {
+    ESP_LOGE(TAG, "Khong ma hoa duoc IR Hub ID cho dieu hoa [%s]", target->id);
+    xSemaphoreGive(s_hunonic_io_mutex);
+    return ESP_FAIL;
+  }
+  ESP_LOGI(TAG, "Gui AC_CONTROL: AC=%s, IR Hub=%s, brand=%d", target->id,
+           r_id, target->brand);
 
   cJSON *action = cJSON_CreateObject();
   cJSON_AddNumberToObject(action, "irwifiv2", 1);
@@ -918,7 +1266,7 @@ esp_err_t hunonic_bridge_control(const char *device_id, int power, int temp,
   cJSON_AddStringToObject(cmd, "topicSub", target->topic_sub);
   cJSON_AddStringToObject(cmd, "topicPub", target->topic_pub);
   cJSON_AddStringToObject(cmd, "event", "AC_CONTROL");
-  cJSON_AddStringToObject(cmd, "root_id", r_id);
+  cJSON_AddStringToObject(cmd, "root_id", encrypted_root_id);
   cJSON_AddItemToObject(cmd, "action", action);
 
   char *cmd_str = cJSON_PrintUnformatted(cmd);
@@ -944,6 +1292,7 @@ esp_err_t hunonic_bridge_control(const char *device_id, int power, int temp,
   char *enc_b64 = (char *)malloc(2048);
   if (!enc_b64) {
     free(plaintext);
+    xSemaphoreGive(s_hunonic_io_mutex);
     return ESP_ERR_NO_MEM;
   }
 
@@ -953,12 +1302,14 @@ esp_err_t hunonic_bridge_control(const char *device_id, int power, int temp,
   if (err != ESP_OK) {
     ESP_LOGE(TAG, "Ma hoa lenh dieu khien that bai!");
     free(enc_b64);
+    xSemaphoreGive(s_hunonic_io_mutex);
     return err;
   }
 
   char *ws_frame = (char *)malloc(2200);
   if (!ws_frame) {
     free(enc_b64);
+    xSemaphoreGive(s_hunonic_io_mutex);
     return ESP_ERR_NO_MEM;
   }
   snprintf(ws_frame, 2200, "{\"data\":\"%s\"}", enc_b64);
@@ -966,8 +1317,8 @@ esp_err_t hunonic_bridge_control(const char *device_id, int power, int temp,
 
   ESP_LOGI(TAG,
            "-> BAN LENH QUA WS: Dieu hoa [%s], Power=%d, Temp=%d, Mode=%d, "
-           "Fan=%d",
-           target->id, power, temp, mode, fan);
+           "Fan=%d, User=%d",
+           target->id, power, temp, mode, fan, atoi(s_user_id));
 
   int sent = esp_websocket_client_send_text(
       s_ws_client, ws_frame, strlen(ws_frame), pdMS_TO_TICKS(2000));
@@ -981,6 +1332,7 @@ esp_err_t hunonic_bridge_control(const char *device_id, int power, int temp,
 
   if (sent < 0) {
     ESP_LOGE(TAG, "Gui frame qua WebSocket that bai");
+    xSemaphoreGive(s_hunonic_io_mutex);
     return ESP_FAIL;
   }
 
@@ -989,6 +1341,7 @@ esp_err_t hunonic_bridge_control(const char *device_id, int power, int temp,
   target->mode = mode;
   target->fan = fan;
 
+  xSemaphoreGive(s_hunonic_io_mutex);
   return ESP_OK;
 }
 
@@ -1024,6 +1377,10 @@ const hunonic_ac_device_t *hunonic_bridge_get_devices(int *out_count) {
 
 bool hunonic_bridge_is_connected(void) { return s_is_ws_connected; }
 
+bool hunonic_bridge_is_ir_hub_online(void) {
+  return s_is_ir_hub_online;
+}
+
 void hunonic_bridge_register_state_cb(hunonic_ac_state_cb_t cb, void *arg) {
   s_state_cb = cb;
   s_state_cb_arg = arg;
@@ -1052,14 +1409,26 @@ esp_err_t hunonic_bridge_init(const char *phone, const char *password) {
 
   esp_err_t err = hunonic_bridge_sync_devices();
   if (err != ESP_OK) {
-    ESP_LOGW(TAG, "Dong bo danh sach thiet bi that bai, se thu lai sau");
-  }
-
-  err = hunonic_ws_start();
-  if (err != ESP_OK) {
-    ESP_LOGE(TAG, "Khoi dong WebSocket client that bai: %d", err);
+    ESP_LOGE(TAG, "Dong bo danh sach thiet bi that bai; khong mo WebSocket voi token chua duoc xac thuc");
     return err;
   }
 
+  if (!s_ws_client) {
+    err = hunonic_ws_start();
+    if (err != ESP_OK) {
+      ESP_LOGE(TAG, "Khoi dong WebSocket client that bai: %d", err);
+      return err;
+    }
+  }
+
+  return ESP_OK;
+}
+
+esp_err_t hunonic_bridge_stop(void) {
+  s_is_ws_connected = false;
+  if (s_ws_client) {
+    ESP_LOGI(TAG, "Tam dung WebSocket Hunonic Bridge (cho ket noi lai Wi-Fi)...");
+    esp_websocket_client_stop(s_ws_client);
+  }
   return ESP_OK;
 }

@@ -65,7 +65,7 @@ void led_task(void *pvParam) {
   while (1) {
     if (s_activity_pulse) {
       s_activity_pulse = false;
-      led_set_rgb(0, 80, 80); // Cyan blink on packet activity
+      led_set_rgb(0, 80, 80);
       vTaskDelay(pdMS_TO_TICKS(80));
       led_set_rgb(0, 0, 0);
       vTaskDelay(pdMS_TO_TICKS(40));
@@ -78,47 +78,47 @@ void led_task(void *pvParam) {
       break;
 
     case LED_STATE_BLE_CONFIG:
-      led_set_rgb(0, 0, 60); // Blue blink
+      led_set_rgb(0, 0, 60);
       vTaskDelay(pdMS_TO_TICKS(500));
       led_set_rgb(0, 0, 0);
       vTaskDelay(pdMS_TO_TICKS(500));
       break;
 
     case LED_STATE_WIFI_CONNECTING:
-      led_set_rgb(50, 40, 0); // Yellow fast blink
+      led_set_rgb(50, 40, 0);
       vTaskDelay(pdMS_TO_TICKS(200));
       led_set_rgb(0, 0, 0);
       vTaskDelay(pdMS_TO_TICKS(200));
       break;
 
     case LED_STATE_WIFI_DISCONNECTED:
-      led_set_rgb(60, 0, 0); // Red slow blink
+      led_set_rgb(60, 0, 0);
       vTaskDelay(pdMS_TO_TICKS(500));
       led_set_rgb(0, 0, 0);
       vTaskDelay(pdMS_TO_TICKS(500));
       break;
 
     case LED_STATE_ONLINE_OK:
-      led_set_rgb(0, 30, 0); // Steady subtle green
+      led_set_rgb(0, 30, 0);
       vTaskDelay(pdMS_TO_TICKS(200));
       break;
 
     case LED_STATE_GATE_ACTIVE:
-      led_set_rgb(0, 40, 40); // Cyan
+      led_set_rgb(0, 40, 40);
       vTaskDelay(pdMS_TO_TICKS(200));
       led_set_rgb(0, 0, 0);
       vTaskDelay(pdMS_TO_TICKS(200));
       break;
 
     case LED_STATE_OTA_UPDATING:
-      led_set_rgb(60, 0, 60); // Fast Magenta blink
+      led_set_rgb(60, 0, 60);
       vTaskDelay(pdMS_TO_TICKS(100));
       led_set_rgb(0, 0, 0);
       vTaskDelay(pdMS_TO_TICKS(100));
       break;
 
     case LED_STATE_ERROR:
-      led_set_rgb(80, 0, 0); // Solid Red
+      led_set_rgb(80, 0, 0);
       vTaskDelay(pdMS_TO_TICKS(200));
       break;
 
@@ -128,3 +128,4 @@ void led_task(void *pvParam) {
     }
   }
 }
+

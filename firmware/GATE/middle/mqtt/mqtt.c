@@ -85,7 +85,7 @@ static void mqtt_tx_task(void *pvParam) {
     if (xQueueReceive(s_mqtt_tx_queue, &item, portMAX_DELAY) == pdTRUE) {
       if (s_mqtt_client && s_mqtt_state == MQTT_STATE_CONNECTED) {
         esp_mqtt_client_publish(s_mqtt_client, item.topic, item.payload, 0, item.qos, item.retain);
-        // Pacing delay (40ms) giua cac ban tin tranh nghen TCP/TLS socket va giu broker ping on dinh
+
         vTaskDelay(pdMS_TO_TICKS(40));
       }
     }
@@ -196,3 +196,4 @@ bool app_mqtt_wait_for_connected(TickType_t timeout_ticks) {
                                          pdFALSE, pdTRUE, timeout_ticks);
   return (bits & MQTT_CONNECTED_BIT) != 0;
 }
+

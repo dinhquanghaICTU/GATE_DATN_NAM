@@ -49,6 +49,7 @@ void m_state_machine_reset_wifi(void) {
   nvs_erase_wifi_credentials();
   memset(s_ssid, 0, sizeof(s_ssid));
   memset(s_pass, 0, sizeof(s_pass));
+  app_mqtt_stop();
   wifi_disconnect();
   m_state_machine_set_state(STATE_WIFI_CONFIG);
 }
@@ -92,6 +93,8 @@ void m_state_machine_task(void *arg) {
     case STATE_WIFI_CONFIG: {
       led_set_state(LED_STATE_BLE_CONFIG);
       ESP_LOGI(TAG, "Dang bat BLE provisioning: [%s] ...", BLE_DEVICE_NAME);
+      wifi_disconnect();
+      vTaskDelay(pdMS_TO_TICKS(150));
       ble_wifi_register_callback(on_ble_wifi_received);
       ble_wifi_init(BLE_DEVICE_NAME);
 
@@ -106,10 +109,11 @@ void m_state_machine_task(void *arg) {
       if (s_fsm.ble_config_wifi) {
         ble_wifi_stop();
         s_fsm.ble_config_wifi = false;
+        vTaskDelay(pdMS_TO_TICKS(200));
       }
 
       app_wifi_config_t cfg = {
-          .max_retry = MAX_RETRY_COUNT,
+          .max_retry = 0,
           .retry_delay_ms = 2000,
       };
       strncpy(cfg.ssid, s_ssid, sizeof(cfg.ssid) - 1);
@@ -117,18 +121,24 @@ void m_state_machine_task(void *arg) {
 
       wifi_connect_sta(&cfg);
 
+      int wait_ticks = 0;
+      const int max_wait_ticks = 25 * 5;
+
       while (s_fsm.state_next == STATE_WIFI_CONNECT) {
         if (wifi_is_connected()) {
           s_fsm.state_next = STATE_WIFI_GOT_IP;
           break;
         }
-        if (wifi_get_state() == WIFI_STATE_FAILED) {
-          ESP_LOGE(TAG,
-                   "Ket noi Wi-Fi that bai, chuyen ve che do BLE Config...");
+        if (wait_ticks >= max_wait_ticks) {
+          ESP_LOGW(TAG,
+                   "Chua the ket noi toi Wi-Fi [%s] trong 25s qua. Chuyen sang che do BLE de co the doi mang...",
+                   s_ssid);
+
           s_fsm.state_next = STATE_WIFI_CONFIG;
           break;
         }
         vTaskDelay(pdMS_TO_TICKS(200));
+        wait_ticks++;
       }
       break;
     }
@@ -204,11 +214,24 @@ void m_state_machine_task(void *arg) {
 
     case STATE_WIFI_DISCONNECT: {
       led_set_state(LED_STATE_WIFI_DISCONNECTED);
-      ESP_LOGW(TAG, "Wi-Fi bi ngat ket noi! Cho tu dong ket noi lai...");
+      ESP_LOGW(TAG, "Wi-Fi bi ngat ket noi! Tam dung MQTT & Hunonic Bridge de cho mang on dinh...");
+
+      app_mqtt_stop();
+      hunonic_bridge_stop();
+
+      int retry_sec = 0;
       while (s_fsm.state_next == STATE_WIFI_DISCONNECT) {
         if (wifi_is_connected()) {
+          ESP_LOGI(TAG, "Da co mang Wi-Fi tro lai! Khoi dong lai cac dich vu Cloud...");
           s_fsm.state_next = STATE_WIFI_GOT_IP;
           break;
+        }
+
+        retry_sec++;
+        if (retry_sec >= 4) {
+          retry_sec = 0;
+          ESP_LOGI(TAG, "Dang tim va ket noi lai Wi-Fi [%s]...", s_ssid);
+          wifi_reconnect();
         }
         vTaskDelay(pdMS_TO_TICKS(1000));
       }
@@ -218,7 +241,7 @@ void m_state_machine_task(void *arg) {
     case STATE_OTA: {
       led_set_state(LED_STATE_OTA_UPDATING);
       ESP_LOGW(TAG,
-               " [TRANG THAI OTA] He thong dang nap firmware moi qua mang...");
+               "[TRANG THAI OTA] He thong dang nap firmware moi qua mang...");
       while (s_fsm.state_next == STATE_OTA) {
         vTaskDelay(pdMS_TO_TICKS(500));
       }
@@ -237,3 +260,4 @@ void m_state_machine_task(void *arg) {
     }
   }
 }
+

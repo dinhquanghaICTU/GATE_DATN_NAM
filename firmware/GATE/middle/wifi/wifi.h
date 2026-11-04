@@ -36,6 +36,7 @@ typedef void (*wifi_event_cb_t)(wifi_state_t state, void *arg);
 esp_err_t wifi_init(void);
 esp_err_t wifi_connect_sta(const app_wifi_config_t *config);
 esp_err_t wifi_disconnect(void);
+esp_err_t wifi_reconnect(void);
 void wifi_register_callback(wifi_event_cb_t cb, void *user_data);
 bool wifi_is_connected(void);
 bool wifi_wait_for_connected(TickType_t timeout_ticks);
@@ -46,4 +47,5 @@ wifi_state_t wifi_get_state(void);
 }
 #endif
 
-#endif /* __WIFI_H__ */
+#endif
+

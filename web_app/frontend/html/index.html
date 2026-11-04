@@ -595,6 +595,38 @@
               </div>
             </div>
           </div>
+
+          <!-- 3. Kho Firmware Đã Có Trên Server VPS -->
+          <div class="ota-card-panel ota-firmware-table-card">
+            <div class="ota-panel-header">
+              <div class="ota-panel-title">
+                <i class="fa-solid fa-folder-tree text-green"></i>
+                <span>Kho Firmware Trên Server VPS</span>
+              </div>
+              <button type="button" class="btn-subview-action" id="btn-ota-refresh-files" title="Làm mới danh sách file">
+                <i class="fa-solid fa-arrows-rotate" id="ota-files-refresh-icon"></i> <span>Làm mới</span>
+              </button>
+            </div>
+            <div style="overflow-x: auto; max-height: 280px; overflow-y: auto;">
+              <table class="ota-table">
+                <thead>
+                  <tr>
+                    <th>Tên File (.bin)</th>
+                    <th>Dung Lượng</th>
+                    <th>Thời Gian Lưu</th>
+                    <th style="text-align: right;">Hành Động</th>
+                  </tr>
+                </thead>
+                <tbody id="ota-firmware-table-body">
+                  <tr>
+                    <td colspan="4" style="text-align: center; padding: 20px; color: #94a3b8;">
+                      <i class="fa-solid fa-spinner fa-spin"></i> Đang tải danh sách firmware...
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
         </div>
       </main>
     </div>

@@ -21,4 +21,5 @@ led_state_t led_get_state(void);
 void led_notify_activity(void);
 void led_task(void *pvParam);
 
-#endif // __LED_H__
+#endif
+

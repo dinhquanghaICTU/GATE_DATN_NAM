@@ -10,4 +10,5 @@ void button_task(void *pvParam);
 void button_task_stop(void);
 void button_task_start(void);
 
-#endif // __BUTTON_H__
+#endif
+

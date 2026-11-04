@@ -81,3 +81,4 @@ esp_err_t nvs_load_string(const char *key, char *out_val, size_t max_len) {
   nvs_close(handle);
   return err;
 }
+

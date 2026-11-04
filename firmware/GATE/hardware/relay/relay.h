@@ -10,8 +10,8 @@ void relay_turn_off(void);
 void relay_toggle(void);
 bool relay_is_on(void);
 
-// Support for secondary relay / actuator channel
 void relay_set_channel(int ch, bool state);
 bool relay_get_channel(int ch);
 
-#endif // __RELAY_H__
+#endif
+

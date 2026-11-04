@@ -30,4 +30,5 @@ esp_err_t ble_wifi_deinit(void);
 }
 #endif
 
-#endif /* __BLE_H__ */
+#endif
+

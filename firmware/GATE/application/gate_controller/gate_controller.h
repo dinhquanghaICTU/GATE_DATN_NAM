@@ -7,4 +7,5 @@
 esp_err_t gate_controller_init(void);
 void gate_controller_task(void *pvParam);
 
-#endif // __GATE_CONTROLLER_H__
+#endif
+

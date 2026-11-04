@@ -20,4 +20,5 @@ esp_err_t nvs_load_string(const char *key, char *out_val, size_t max_len);
 }
 #endif
 
-#endif // __FLASH_H__
+#endif
+

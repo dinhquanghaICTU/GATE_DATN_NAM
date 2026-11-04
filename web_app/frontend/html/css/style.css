@@ -5498,6 +5498,81 @@ body {
   border: 1px solid #fecaca;
 }
 
+/* ── Kho Firmware Trên Server VPS ────────────────────────────────────────── */
+.ota-firmware-table-card {
+  margin-top: 20px;
+  grid-column: 1 / -1;
+  background: #ffffff;
+  border-radius: 18px;
+  border: 1.5px solid #e2e8f0;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04);
+  padding: 22px 24px;
+}
+
+.ota-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.ota-table th {
+  padding: 10px 14px;
+  text-align: left;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #64748b;
+  border-bottom: 1.5px solid #e2e8f0;
+  background: #f8fafc;
+}
+
+.ota-table td {
+  padding: 12px 14px;
+  font-size: 0.86rem;
+  color: #1e293b;
+  border-bottom: 1px solid #f1f5f9;
+  vertical-align: middle;
+}
+
+.ota-table tr:hover td {
+  background: #f8fafc;
+}
+
+.btn-ota-table-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 8px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  border: 1px solid transparent;
+  text-decoration: none;
+}
+
+.btn-ota-table-download {
+  background: #f1f5f9;
+  color: #334155;
+  border-color: #cbd5e1;
+}
+
+.btn-ota-table-download:hover {
+  background: #e2e8f0;
+  color: #0f172a;
+}
+
+.btn-ota-table-apply {
+  background: #ecfdf5;
+  color: #059669;
+  border-color: #a7f3d0;
+  margin-left: 6px;
+}
+
+.btn-ota-table-apply:hover {
+  background: #d1fae5;
+  color: #047857;
+}
+
 @keyframes pulseOtaBadge {
   0% { opacity: 1; }
   50% { opacity: 0.6; }

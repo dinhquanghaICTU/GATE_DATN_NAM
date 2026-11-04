@@ -34,15 +34,16 @@ static void on_esp_now_recv_cb(const esp_now_recv_info_t *recv_info, const uint8
 
   if (len == sizeof(NodeTelemetry_t)) {
     const NodeTelemetry_t *telemetry = (const NodeTelemetry_t *)data;
-    ESP_LOGI(TAG, "📡 [ESP-NOW RECV] Node #%d | Packet #%lu | Val1: %.2f | Val2: %.2f | Bat: %.2fV | RSSI: %d dBm",
+    ESP_LOGI(TAG, "[ESP-NOW RECV] Node #%d | Packet #%lu | Val1: %.2f | Val2: %.2f | Presence: %s | Bat: %.2fV | RSSI: %d dBm",
              telemetry->node_id, (unsigned long)telemetry->packet_id, telemetry->val1, telemetry->val2,
-             telemetry->battery_volt, rssi);
+             telemetry->presence ? "CO NGUOI" : "TRONG", telemetry->battery_volt, rssi);
 
     if (s_telemetry_cb) {
       s_telemetry_cb(recv_info->src_addr, telemetry, rssi);
     }
   } else {
-    ESP_LOGI(TAG, "📡 [ESP-NOW RAW RECV] Do dai: %d bytes tu MAC: %02X:%02X:%02X:%02X:%02X:%02X",
+
+    ESP_LOGI(TAG, "[ESP-NOW RAW RECV] Do dai: %d bytes tu MAC: %02X:%02X:%02X:%02X:%02X:%02X",
              len, recv_info->src_addr[0], recv_info->src_addr[1], recv_info->src_addr[2],
              recv_info->src_addr[3], recv_info->src_addr[4], recv_info->src_addr[5]);
 
@@ -53,26 +54,55 @@ static void on_esp_now_recv_cb(const esp_now_recv_info_t *recv_info, const uint8
 }
 
 esp_err_t esp_now_node_init(void) {
+  uint8_t mac[6], channel;
+  wifi_second_chan_t secondary;
+  if (esp_wifi_get_mac(WIFI_IF_STA, mac) == ESP_OK &&
+      esp_wifi_get_channel(&channel, &secondary) == ESP_OK) {
+    ESP_LOGI(TAG, "ESP-NOW STA MAC=%02X:%02X:%02X:%02X:%02X:%02X channel=%u telemetry_size=%u",
+             mac[0], mac[1], mac[2], mac[3], mac[4], mac[5], channel,
+             (unsigned)sizeof(NodeTelemetry_t));
+  }
   esp_err_t err = esp_now_init();
-  if (err != ESP_OK) {
+  if (err != ESP_OK && err != ESP_ERR_ESPNOW_EXIST) {
     ESP_LOGE(TAG, "Khoi tao ESP-NOW that bai: %s", esp_err_to_name(err));
     return err;
   }
 
+  esp_wifi_config_espnow_rate(WIFI_IF_STA, WIFI_PHY_RATE_1M_L);
+
   esp_now_register_send_cb(on_esp_now_send_cb);
   esp_now_register_recv_cb(on_esp_now_recv_cb);
 
-  // Them peer Broadcast
+  if (esp_now_is_peer_exist(s_broadcast_mac)) {
+    esp_now_del_peer(s_broadcast_mac);
+  }
+
   esp_now_peer_info_t peer_info = {0};
   memcpy(peer_info.peer_addr, s_broadcast_mac, ESP_NOW_ETH_ALEN);
-  peer_info.channel = 0; // Theo channel WiFi hien tai
+  peer_info.channel = 0;
+  peer_info.ifidx = WIFI_IF_STA;
   peer_info.encrypt = false;
 
   err = esp_now_add_peer(&peer_info);
   if (err != ESP_OK && err != ESP_ERR_ESPNOW_EXIST) {
     ESP_LOGE(TAG, "Them broadcast peer that bai: %s", esp_err_to_name(err));
   } else {
-    ESP_LOGI(TAG, "Them broadcast peer ESP-NOW thanh cong!");
+    ESP_LOGI(TAG, "[ESP-NOW READY] Gateway đã sẵn sàng nhận dữ liệu từ các Node cảm biến!");
+  }
+
+  static const uint8_t node1_mac[ESP_NOW_ETH_ALEN] = {0xCC, 0x68, 0xC7, 0xF6, 0xBD, 0x18};
+  if (esp_now_is_peer_exist(node1_mac)) {
+    esp_now_del_peer(node1_mac);
+  }
+  esp_now_peer_info_t node_peer = {0};
+  memcpy(node_peer.peer_addr, node1_mac, ESP_NOW_ETH_ALEN);
+  node_peer.channel = 0;
+  node_peer.ifidx = WIFI_IF_STA;
+  node_peer.encrypt = false;
+  err = esp_now_add_peer(&node_peer);
+  if (err == ESP_OK) {
+    ESP_LOGI(TAG, "[PEER REGISTERED] Đã thêm Node 1 (%02X:%02X:%02X:%02X:%02X:%02X) vào danh sách tin cậy!",
+             node1_mac[0], node1_mac[1], node1_mac[2], node1_mac[3], node1_mac[4], node1_mac[5]);
   }
 
   return ESP_OK;
@@ -81,7 +111,6 @@ esp_err_t esp_now_node_init(void) {
 esp_err_t esp_now_node_send(const uint8_t *mac, const uint8_t *data, size_t len) {
   const uint8_t *target = mac ? mac : s_broadcast_mac;
 
-  // Neu la unicast va chua ton tai trong peer list thi add peer
   if (mac && memcmp(mac, s_broadcast_mac, ESP_NOW_ETH_ALEN) != 0) {
     if (!esp_now_is_peer_exist(mac)) {
       esp_now_peer_info_t peer = {0};
@@ -111,3 +140,4 @@ void esp_now_node_register_raw_cb(esp_now_raw_recv_cb_t cb) {
 uint32_t esp_now_node_get_total_packets(void) {
   return s_total_packets;
 }
+

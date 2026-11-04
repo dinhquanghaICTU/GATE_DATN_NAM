@@ -12,10 +12,11 @@
 typedef struct {
   uint32_t packet_id;
   uint8_t  node_id;
-  float    val1;             // Sensor value 1 (e.g., Temp / Distance)
-  float    val2;             // Sensor value 2 (e.g., Humidity / Pressure)
-  float    battery_volt;     // Battery voltage (V)
-  char     fw_version[16];   // Node firmware version
+  float    val1;
+  float    val2;
+  float    battery_volt;
+  uint8_t  presence;
+  char     fw_version[15];
 } NodeTelemetry_t;
 
 typedef struct {
@@ -36,4 +37,5 @@ void esp_now_node_register_telemetry_cb(esp_now_telemetry_cb_t cb);
 void esp_now_node_register_raw_cb(esp_now_raw_recv_cb_t cb);
 uint32_t esp_now_node_get_total_packets(void);
 
-#endif // __ESP_NOW_NODE_H__
+#endif
+
