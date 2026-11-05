@@ -153,7 +153,21 @@ static void execute_gate_command(const char *payload) {
       ESP_LOGI(TAG, "Nhan lenh SYNC tu MQTT -> Goi Hunonic Cloud lay danh sach thiet bi moi nhat...");
       esp_err_t sync_err = hunonic_bridge_sync_devices();
       if (sync_err != ESP_OK) {
-        ESP_LOGW(TAG, "Hunonic sync failed; not publishing stale device_list");
+        int count = 0;
+        hunonic_bridge_get_devices(&count);
+        char diagnostic[192];
+        snprintf(diagnostic, sizeof(diagnostic),
+                 "{\"event\":\"hunonic_sync_result\",\"result\":\"fail\","
+                 "\"err\":%d,\"http_status\":%d,\"ac_count\":%d,"
+                 "\"ws_connected\":%d,\"ir_online\":%d}",
+                 (int)hunonic_bridge_get_last_sync_error(),
+                 hunonic_bridge_get_last_sync_http_status(), count,
+                 hunonic_bridge_is_connected() ? 1 : 0,
+                 hunonic_bridge_is_ir_hub_online() ? 1 : 0);
+#ifdef TOPIC_GATE_STATUS
+        app_mqtt_publish(TOPIC_GATE_STATUS, diagnostic, 0, 0);
+#endif
+        ESP_LOGW(TAG, "Hunonic sync failed; diagnostic MQTT response published");
         return;
       }
     }

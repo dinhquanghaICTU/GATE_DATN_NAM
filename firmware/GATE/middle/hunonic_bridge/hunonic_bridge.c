@@ -39,6 +39,8 @@ static char s_ir_gateway_topic_sub[128] = {0};
 static char s_ir_gateway_topic_pub[128] = {0};
 static bool s_is_ir_hub_online = false;
 static char s_selected_home_id[32];
+static esp_err_t s_last_sync_error = ESP_ERR_INVALID_STATE;
+static int s_last_sync_http_status = 0;
 
 static void hunonic_ws_subscribe_all(void);
 static esp_err_t hunonic_ws_start(void);
@@ -405,12 +407,18 @@ static cJSON *select_valid_home_snapshot(cJSON *root, const char *home_id) {
 esp_err_t hunonic_bridge_sync_devices(void) {
   if (strlen(s_token) == 0) {
     ESP_LOGW(TAG, "Chua co token, khong the sync thiet bi");
+    s_last_sync_error = ESP_ERR_INVALID_STATE;
+    s_last_sync_http_status = 0;
     return ESP_ERR_INVALID_STATE;
   }
 
   if (!s_hunonic_io_mutex) {
     s_hunonic_io_mutex = xSemaphoreCreateMutex();
-    if (!s_hunonic_io_mutex) return ESP_ERR_NO_MEM;
+    if (!s_hunonic_io_mutex) {
+      s_last_sync_error = ESP_ERR_NO_MEM;
+      s_last_sync_http_status = 0;
+      return ESP_ERR_NO_MEM;
+    }
   }
   xSemaphoreTake(s_hunonic_io_mutex, portMAX_DELAY);
 
@@ -432,6 +440,8 @@ esp_err_t hunonic_bridge_sync_devices(void) {
     }
 
     if (err != ESP_OK || status_code != 200) {
+      s_last_sync_error = (err != ESP_OK) ? err : ESP_FAIL;
+      s_last_sync_http_status = status_code;
       ESP_LOGE(TAG, "Sync thiet bi that bai: err=%d, HTTP status=%d", err,
                status_code);
       if (resp_buf && strlen(resp_buf) > 0) {
@@ -466,6 +476,8 @@ esp_err_t hunonic_bridge_sync_devices(void) {
   }
 
   if (!resp_buf) {
+    s_last_sync_error = ESP_FAIL;
+    s_last_sync_http_status = 0;
     xSemaphoreGive(s_hunonic_io_mutex);
     return ESP_FAIL;
   }
@@ -474,6 +486,8 @@ esp_err_t hunonic_bridge_sync_devices(void) {
   free(resp_buf);
   if (!root) {
     ESP_LOGE(TAG, "Parse JSON listDeviceByHome that bai");
+    s_last_sync_error = ESP_FAIL;
+    s_last_sync_http_status = 200;
     xSemaphoreGive(s_hunonic_io_mutex);
     return ESP_FAIL;
   }
@@ -484,6 +498,8 @@ esp_err_t hunonic_bridge_sync_devices(void) {
   if (!selected_home) {
     ESP_LOGE(TAG, "Invalid fresh snapshot for selected home %s; preserving last good inventory", s_selected_home_id);
     cJSON_Delete(root);
+    s_last_sync_error = ESP_FAIL;
+    s_last_sync_http_status = 200;
     xSemaphoreGive(s_hunonic_io_mutex);
     return ESP_FAIL;
   }
@@ -714,11 +730,15 @@ esp_err_t hunonic_bridge_sync_devices(void) {
     esp_err_t ws_err = hunonic_ws_start();
     if (ws_err != ESP_OK) {
       ESP_LOGE(TAG, "Khoi dong WebSocket sau khi sync that bai: %d", ws_err);
+      s_last_sync_error = ws_err;
+      s_last_sync_http_status = 200;
       xSemaphoreGive(s_hunonic_io_mutex);
       return ws_err;
     }
   }
   xSemaphoreGive(s_hunonic_io_mutex);
+  s_last_sync_error = ESP_OK;
+  s_last_sync_http_status = 200;
   return ESP_OK;
 }
 
@@ -1373,6 +1393,12 @@ const hunonic_ac_device_t *hunonic_bridge_get_devices(int *out_count) {
   if (out_count)
     *out_count = s_ac_count;
   return s_ac_devices;
+}
+
+esp_err_t hunonic_bridge_get_last_sync_error(void) { return s_last_sync_error; }
+
+int hunonic_bridge_get_last_sync_http_status(void) {
+  return s_last_sync_http_status;
 }
 
 bool hunonic_bridge_is_connected(void) { return s_is_ws_connected; }
