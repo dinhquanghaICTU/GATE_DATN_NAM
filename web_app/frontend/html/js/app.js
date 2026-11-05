@@ -4285,9 +4285,35 @@ document.addEventListener("DOMContentLoaded", () => {
 
       const res = await response.json();
       if (response.ok && res.success) {
+        // /ota/upload returns the file metadata at the root level.  Accept
+        // the nested shape too, so frontend and older backend deployments
+        // remain compatible.
+        const uploadedFile = res.file || res;
+        const targetHost = window.location.hostname || "180.93.113.40";
+        const targetPort = window.location.port ? `:${window.location.port}` : "";
+        const downloadUrl = uploadedFile.download_url || "";
+        const firmwareUrl = downloadUrl.startsWith("http")
+          ? downloadUrl
+          : `http://${targetHost}${targetPort}${downloadUrl}`;
+
+        appendOtaLog(`Upload thành công: MD5 = ${uploadedFile.md5 || "--"}`, "success");
+        appendOtaLog(`Đang gửi lệnh OTA xuống Gateway: ${firmwareUrl}`, "info");
+
+        const triggerRes = await callApi("/api/gateway/ota/trigger", "POST", {
+          target: currentOtaTarget,
+          version,
+          url: firmwareUrl,
+          filename: uploadedFile.filename || selectedOtaFile.name,
+          size: uploadedFile.size || selectedOtaFile.size,
+          md5: uploadedFile.md5 || ""
+        });
+
+        if (!triggerRes || !triggerRes.success) {
+          throw new Error(triggerRes?.detail || triggerRes?.message || "Upload thành công nhưng không thể gửi lệnh OTA!");
+        }
+
         showToast("Đã tải lên và phát lệnh OTA thành công! Đang theo dõi tiến trình...", "success");
-        appendOtaLog(`Upload thành công: MD5 = ${res.file.md5}`, "success");
-        appendOtaLog(`Lệnh OTA đã gửi xuống Gateway. URL: ${res.file.download_url}`, "success");
+        appendOtaLog("Lệnh OTA đã gửi xuống Gateway.", "success");
         loadAdminFirmwares();
         startOtaPolling(version, initialVer);
       } else {
