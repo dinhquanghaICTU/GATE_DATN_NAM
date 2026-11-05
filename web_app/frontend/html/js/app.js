@@ -4248,7 +4248,10 @@ document.addEventListener("DOMContentLoaded", () => {
       return;
     }
 
-    const token = localStorage.getItem("access_token");
+    // Login stores the JWT under gate_token.  Using a different key here
+    // made every OTA upload look like an expired session and redirected to
+    // login.html even though the dashboard was authenticated.
+    const token = localStorage.getItem("gate_token");
     if (!token) {
       showToast("Phiên làm việc hết hạn, vui lòng đăng nhập lại!", "error");
       window.location.href = "login.html";
