@@ -24,7 +24,7 @@ static const char *TAG = "HUNONIC_BRIDGE";
   "https://web.hunonic.com/api/api/hun-api/device/listDeviceOfHomeSelect?home_id="
 #define HUNONIC_WS_GATEWAY_URL "wss://web.hunonic.com/gateway/ws?token="
 
-#define HTTP_RESP_BUFFER_SIZE 16384
+#define HTTP_RESP_BUFFER_SIZE 65536
 #define TOKEN_MAX_LEN 512
 #define PHONE_MAX_LEN 32
 #define PASS_MAX_LEN 64
@@ -193,6 +193,7 @@ static void parse_user_id_from_jwt(const char *token) {
 typedef struct {
   char *buffer;
   int buffer_len;
+  int buffer_cap;
   bool overflow;
 } http_response_buffer_t;
 
@@ -200,15 +201,29 @@ static esp_err_t http_event_handler(esp_http_client_event_t *evt) {
   http_response_buffer_t *resp = (http_response_buffer_t *)evt->user_data;
   if (evt->event_id == HTTP_EVENT_ON_DATA) {
     if (resp && resp->buffer) {
-      if (resp->buffer_len + evt->data_len < HTTP_RESP_BUFFER_SIZE - 1) {
-        memcpy(resp->buffer + resp->buffer_len, evt->data, evt->data_len);
-        resp->buffer_len += evt->data_len;
-        resp->buffer[resp->buffer_len] = '\0';
-      } else {
-        resp->overflow = true;
-        ESP_LOGE(TAG, "HTTP Response vuot qua kich thuoc buffer (%d bytes)",
-                 HTTP_RESP_BUFFER_SIZE);
+      if (resp->buffer_len + evt->data_len >= resp->buffer_cap - 1) {
+        int new_cap = resp->buffer_cap * 2;
+        if (new_cap < resp->buffer_len + evt->data_len + 1024) {
+          new_cap = resp->buffer_len + evt->data_len + 4096;
+        }
+        if (new_cap > 131072) { /* Gioi han toi da 128KB */
+          resp->overflow = true;
+          ESP_LOGE(TAG, "HTTP Response vuot qua kich thuoc toi da 128KB (hien tai %d bytes)",
+                   resp->buffer_cap);
+          return ESP_FAIL;
+        }
+        char *new_buf = (char *)realloc(resp->buffer, new_cap);
+        if (!new_buf) {
+          resp->overflow = true;
+          ESP_LOGE(TAG, "Khong the cap phat them bo nho cho HTTP Response (%d bytes)", new_cap);
+          return ESP_ERR_NO_MEM;
+        }
+        resp->buffer = new_buf;
+        resp->buffer_cap = new_cap;
       }
+      memcpy(resp->buffer + resp->buffer_len, evt->data, evt->data_len);
+      resp->buffer_len += evt->data_len;
+      resp->buffer[resp->buffer_len] = '\0';
     }
   }
   return ESP_OK;
@@ -234,7 +249,7 @@ static esp_err_t hunonic_http_login(const char *phone, const char *password) {
     return ESP_ERR_NO_MEM;
   memset(resp_buf, 0, HTTP_RESP_BUFFER_SIZE);
 
-  http_response_buffer_t resp = {.buffer = resp_buf, .buffer_len = 0};
+  http_response_buffer_t resp = {.buffer = resp_buf, .buffer_len = 0, .buffer_cap = HTTP_RESP_BUFFER_SIZE};
 
   esp_http_client_config_t config = {
       .url = HUNONIC_API_LOGIN_URL,
@@ -257,12 +272,12 @@ static esp_err_t hunonic_http_login(const char *phone, const char *password) {
 
   if (err != ESP_OK || status_code != 200) {
     ESP_LOGE(TAG, "Login that bai: err=%d, HTTP status=%d", err, status_code);
-    free(resp_buf);
+    free(resp.buffer);
     return ESP_FAIL;
   }
 
-  cJSON *root = cJSON_Parse(resp_buf);
-  free(resp_buf);
+  cJSON *root = cJSON_Parse(resp.buffer);
+  free(resp.buffer);
   if (!root) {
     ESP_LOGE(TAG, "Parse JSON phan hoi login that bai");
     return ESP_FAIL;
@@ -314,7 +329,7 @@ static esp_err_t hunonic_http_get(const char *url, char **out_response,
   char *response = malloc(HTTP_RESP_BUFFER_SIZE);
   if (!response) return ESP_ERR_NO_MEM;
   memset(response, 0, HTTP_RESP_BUFFER_SIZE);
-  http_response_buffer_t buffer = {.buffer = response, .buffer_len = 0};
+  http_response_buffer_t buffer = {.buffer = response, .buffer_len = 0, .buffer_cap = HTTP_RESP_BUFFER_SIZE};
   esp_http_client_config_t config = {
       .url = url,
       .method = HTTP_METHOD_GET,
@@ -325,7 +340,7 @@ static esp_err_t hunonic_http_get(const char *url, char **out_response,
   };
   esp_http_client_handle_t client = esp_http_client_init(&config);
   if (!client) {
-    free(response);
+    free(buffer.buffer);
     return ESP_ERR_NO_MEM;
   }
   char auth_header[TOKEN_MAX_LEN + 16];
@@ -338,7 +353,7 @@ static esp_err_t hunonic_http_get(const char *url, char **out_response,
   esp_err_t err = esp_http_client_perform(client);
   *out_status = esp_http_client_get_status_code(client);
   esp_http_client_cleanup(client);
-  *out_response = response;
+  *out_response = buffer.buffer;
   return buffer.overflow ? ESP_ERR_INVALID_SIZE : err;
 }
 

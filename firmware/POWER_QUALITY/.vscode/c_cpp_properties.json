@@ -1,0 +1,44 @@
+{
+    "configurations": [
+        {
+            "name": "STM32F103 (FreeRTOS + StdPeriph)",
+            "includePath": [
+                "${workspaceFolder}/Core/Inc",
+                "${workspaceFolder}/Drivers/CMSIS/Core",
+                "${workspaceFolder}/Drivers/CMSIS/Device",
+                "${workspaceFolder}/Drivers/STM32F10x_StdPeriph_Driver/inc",
+                "${workspaceFolder}/Middlewares/Third_Party/FreeRTOS/Source/include",
+                "${workspaceFolder}/Middlewares/Third_Party/FreeRTOS/Source/portable/GCC/ARM_CM3",
+                "${workspaceFolder}/Hardware/**",
+                "${workspaceFolder}/middle/**",
+                "${workspaceFolder}/third_party/**",
+                "/usr/lib/gcc/arm-none-eabi/10.3.1/include",
+                "/usr/include/newlib"
+            ],
+            "defines": [
+                "STM32F10X_MD",
+                "USE_STDPERIPH_DRIVER"
+            ],
+            "compilerPath": "/usr/bin/arm-none-eabi-gcc",
+            "cStandard": "c11",
+            "cppStandard": "c++17",
+            "intelliSenseMode": "linux-gcc-arm",
+            "compileCommands": "${workspaceFolder}/compile_commands.json",
+            "browse": {
+                "path": [
+                    "${workspaceFolder}/Core/Inc",
+                    "${workspaceFolder}/Drivers/CMSIS/Core",
+                    "${workspaceFolder}/Drivers/CMSIS/Device",
+                    "${workspaceFolder}/Drivers/STM32F10x_StdPeriph_Driver/inc",
+                    "${workspaceFolder}/Middlewares/Third_Party/FreeRTOS/Source/include",
+                    "${workspaceFolder}/Middlewares/Third_Party/FreeRTOS/Source/portable/GCC/ARM_CM3",
+                    "${workspaceFolder}/Hardware",
+                    "${workspaceFolder}/middle",
+                    "${workspaceFolder}/third_party"
+                ],
+                "limitSymbolsToIncludedHeaders": false
+            }
+        }
+    ],
+    "version": 4
+}

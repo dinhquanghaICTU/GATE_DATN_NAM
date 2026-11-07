@@ -114,11 +114,12 @@ def write_ble_credentials(ssid, password):
 
 def scan_real_wifi():
     import subprocess
+    import re
     networks = []
-    seen = set()
+    seen = {}
     try:
         try:
-            subprocess.run(["nmcli", "dev", "wifi", "rescan"], timeout=2, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            subprocess.run(["nmcli", "dev", "wifi", "rescan"], timeout=3, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
             time.sleep(0.5)
         except Exception:
             pass
@@ -130,30 +131,49 @@ def scan_real_wifi():
         for line in out.strip().split("\n"):
             if not line:
                 continue
-            parts = line.split(":")
+            parts = re.split(r'(?<!\\):', line)
+            parts = [p.replace(r'\:', ':').strip() for p in parts]
             if len(parts) >= 2:
                 ssid = parts[0]
-                if not ssid or ssid in seen:
+                if not ssid or ssid == "--":
                     continue
-                seen.add(ssid)
-                sig = int(parts[1]) if parts[1].isdigit() else 75
-                sec = parts[2] if len(parts) > 2 and parts[2] else "WPA2"
+                try:
+                    sig = int(parts[1]) if parts[1].isdigit() else 50
+                except Exception:
+                    sig = 50
+                sec = parts[2] if len(parts) > 2 and parts[2] else "Open"
                 chan = parts[3] if len(parts) > 3 and parts[3] else "1"
-                networks.append({
-                    "ssid": ssid,
-                    "signal": sig,
-                    "security": sec,
-                    "band": "2.4G" if (chan.isdigit() and int(chan) <= 14) else "5G",
-                    "channel": chan
-                })
+                try:
+                    chan_num = int(chan)
+                    band = "2.4G" if chan_num <= 14 else "5G"
+                except Exception:
+                    band = "2.4G"
+
+                # Deduplicate: if seen, keep higher signal or prefer 2.4G
+                if ssid in seen:
+                    prev = seen[ssid]
+                    if (prev.get("band") != "2.4G" and band == "2.4G") or (sig > prev.get("signal", 0)):
+                        seen[ssid] = {
+                            "ssid": ssid,
+                            "signal": sig,
+                            "security": sec,
+                            "band": band,
+                            "channel": chan
+                        }
+                else:
+                    seen[ssid] = {
+                        "ssid": ssid,
+                        "signal": sig,
+                        "security": sec,
+                        "band": band,
+                        "channel": chan
+                    }
+
+        networks = list(seen.values())
+        # Ưu tiên 2.4G (vì ESP32-S3 chỉ nhận 2.4G) và xếp sóng mạnh lên đầu
+        networks.sort(key=lambda x: (1 if x.get("band") == "2.4G" else 0, x.get("signal", 0)), reverse=True)
     except Exception as e:
         print("[!] Lỗi quét wifi:", e)
-
-    # Đảm bảo có mạng Wi-Fi thực tế xung quanh
-    if not any(n["ssid"] == "Dinh " for n in networks):
-        networks.insert(0, {"ssid": "Dinh ", "signal": 85, "security": "WPA2", "band": "2.4G", "channel": "1"})
-    if not any(n["ssid"] == "QuangHa" for n in networks):
-        networks.append({"ssid": "QuangHa", "signal": 78, "security": "WPA2", "band": "2.4G", "channel": "6"})
 
     return networks
 
@@ -161,7 +181,7 @@ class BleBridgeHandler(BaseHTTPRequestHandler):
     def _send_cors_headers(self):
         self.send_header("Access-Control-Allow-Origin", "*")
         self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
-        self.send_header("Access-Control-Allow-Headers", "Content-Type, Access-Control-Request-Private-Network")
+        self.send_header("Access-Control-Allow-Headers", "*")
         self.send_header("Access-Control-Allow-Private-Network", "true")
 
     def do_OPTIONS(self):

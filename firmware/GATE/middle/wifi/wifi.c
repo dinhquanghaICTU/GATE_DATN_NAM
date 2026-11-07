@@ -56,6 +56,8 @@ static void wifi_event_handler(void *arg, esp_event_base_t event_base,
       ESP_LOGW(TAG, "Wi-Fi ngat ket noi! Reason code: %d", reason);
       if (reason == 201) {
         ESP_LOGE(TAG, "-> (Reason 201): KHONG TIM THAY SSID '%s' trong pham vi (Kiem tra router/hotspot co dang bat 2.4GHz khong)!", s_sta_config.ssid);
+      } else if (reason == 211) {
+        ESP_LOGE(TAG, "-> (Reason 211): AP khong thoa man nguong xac thuc (authmode threshold failure)!");
       } else if (reason == 15 || reason == 202 || reason == 204) {
         ESP_LOGE(TAG, "-> (Reason %d): SAI MAT KHAU Wi-Fi hoac loi xac thuc WPA2/WPA3!", reason);
       } else if (reason == 200) {
@@ -170,7 +172,11 @@ esp_err_t wifi_connect_sta(const app_wifi_config_t *config) {
           sizeof(wifi_config.sta.ssid) - 1);
   strncpy((char *)wifi_config.sta.password, config->password,
           sizeof(wifi_config.sta.password) - 1);
-  wifi_config.sta.threshold.authmode = WIFI_AUTH_OPEN;
+  if (strlen(config->password) > 0) {
+    wifi_config.sta.threshold.authmode = WIFI_AUTH_WPA_PSK;
+  } else {
+    wifi_config.sta.threshold.authmode = WIFI_AUTH_OPEN;
+  }
   wifi_config.sta.scan_method = WIFI_ALL_CHANNEL_SCAN;
   wifi_config.sta.sort_method = WIFI_CONNECT_AP_BY_SIGNAL;
 

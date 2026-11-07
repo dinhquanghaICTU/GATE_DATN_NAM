@@ -1,0 +1,167 @@
+[
+  {
+    "directory": "/home/quanghaictu/DATN_NAM/firmware/POWER_QUALITY",
+    "command": "arm-none-eabi-gcc -c -mcpu=cortex-m3 -mthumb   -DSTM32F10X_MD -DUSE_STDPERIPH_DRIVER -I. -ICore/Inc -IDrivers/CMSIS/Core -IDrivers/CMSIS/Device -IDrivers/STM32F10x_StdPeriph_Driver/inc -IMiddlewares/Third_Party/FreeRTOS/Source/include -IMiddlewares/Third_Party/FreeRTOS/Source/portable/GCC/ARM_CM3 -IHardware -IHardware/led -IHardware/delay -IHardware/pzem -Imiddle -Imiddle/uart_debug -Ithird_party -Ithird_party/ringbuff -Ithird_party/jsmn -Og -Wall -fdata-sections -ffunction-sections -g -gdwarf-2 -MMD -MP -MF\"build/main.d\" -Wa,-adhlns=build/main.lst Core/Src/main.c -o build/main.o",
+    "file": "/home/quanghaictu/DATN_NAM/firmware/POWER_QUALITY/Core/Src/main.c"
+  },
+  {
+    "directory": "/home/quanghaictu/DATN_NAM/firmware/POWER_QUALITY",
+    "command": "arm-none-eabi-gcc -c -mcpu=cortex-m3 -mthumb   -DSTM32F10X_MD -DUSE_STDPERIPH_DRIVER -I. -ICore/Inc -IDrivers/CMSIS/Core -IDrivers/CMSIS/Device -IDrivers/STM32F10x_StdPeriph_Driver/inc -IMiddlewares/Third_Party/FreeRTOS/Source/include -IMiddlewares/Third_Party/FreeRTOS/Source/portable/GCC/ARM_CM3 -IHardware -IHardware/led -IHardware/delay -IHardware/pzem -Imiddle -Imiddle/uart_debug -Ithird_party -Ithird_party/ringbuff -Ithird_party/jsmn -Og -Wall -fdata-sections -ffunction-sections -g -gdwarf-2 -MMD -MP -MF\"build/stm32f10x_it.d\" -Wa,-adhlns=build/stm32f10x_it.lst Core/Src/stm32f10x_it.c -o build/stm32f10x_it.o",
+    "file": "/home/quanghaictu/DATN_NAM/firmware/POWER_QUALITY/Core/Src/stm32f10x_it.c"
+  },
+  {
+    "directory": "/home/quanghaictu/DATN_NAM/firmware/POWER_QUALITY",
+    "command": "arm-none-eabi-gcc -c -mcpu=cortex-m3 -mthumb   -DSTM32F10X_MD -DUSE_STDPERIPH_DRIVER -I. -ICore/Inc -IDrivers/CMSIS/Core -IDrivers/CMSIS/Device -IDrivers/STM32F10x_StdPeriph_Driver/inc -IMiddlewares/Third_Party/FreeRTOS/Source/include -IMiddlewares/Third_Party/FreeRTOS/Source/portable/GCC/ARM_CM3 -IHardware -IHardware/led -IHardware/delay -IHardware/pzem -Imiddle -Imiddle/uart_debug -Ithird_party -Ithird_party/ringbuff -Ithird_party/jsmn -Og -Wall -fdata-sections -ffunction-sections -g -gdwarf-2 -MMD -MP -MF\"build/system_stm32f10x.d\" -Wa,-adhlns=build/system_stm32f10x.lst Core/Src/system_stm32f10x.c -o build/system_stm32f10x.o",
+    "file": "/home/quanghaictu/DATN_NAM/firmware/POWER_QUALITY/Core/Src/system_stm32f10x.c"
+  },
+  {
+    "directory": "/home/quanghaictu/DATN_NAM/firmware/POWER_QUALITY",
+    "command": "arm-none-eabi-gcc -c -mcpu=cortex-m3 -mthumb   -DSTM32F10X_MD -DUSE_STDPERIPH_DRIVER -I. -ICore/Inc -IDrivers/CMSIS/Core -IDrivers/CMSIS/Device -IDrivers/STM32F10x_StdPeriph_Driver/inc -IMiddlewares/Third_Party/FreeRTOS/Source/include -IMiddlewares/Third_Party/FreeRTOS/Source/portable/GCC/ARM_CM3 -IHardware -IHardware/led -IHardware/delay -IHardware/pzem -Imiddle -Imiddle/uart_debug -Ithird_party -Ithird_party/ringbuff -Ithird_party/jsmn -Og -Wall -fdata-sections -ffunction-sections -g -gdwarf-2 -MMD -MP -MF\"build/core_cm3.d\" -Wa,-adhlns=build/core_cm3.lst Drivers/CMSIS/Core/core_cm3.c -o build/core_cm3.o",
+    "file": "/home/quanghaictu/DATN_NAM/firmware/POWER_QUALITY/Drivers/CMSIS/Core/core_cm3.c"
+  },
+  {
+    "directory": "/home/quanghaictu/DATN_NAM/firmware/POWER_QUALITY",
+    "command": "arm-none-eabi-gcc -c -mcpu=cortex-m3 -mthumb   -DSTM32F10X_MD -DUSE_STDPERIPH_DRIVER -I. -ICore/Inc -IDrivers/CMSIS/Core -IDrivers/CMSIS/Device -IDrivers/STM32F10x_StdPeriph_Driver/inc -IMiddlewares/Third_Party/FreeRTOS/Source/include -IMiddlewares/Third_Party/FreeRTOS/Source/portable/GCC/ARM_CM3 -IHardware -IHardware/led -IHardware/delay -IHardware/pzem -Imiddle -Imiddle/uart_debug -Ithird_party -Ithird_party/ringbuff -Ithird_party/jsmn -Og -Wall -fdata-sections -ffunction-sections -g -gdwarf-2 -MMD -MP -MF\"build/misc.d\" -Wa,-adhlns=build/misc.lst Drivers/STM32F10x_StdPeriph_Driver/src/misc.c -o build/misc.o",
+    "file": "/home/quanghaictu/DATN_NAM/firmware/POWER_QUALITY/Drivers/STM32F10x_StdPeriph_Driver/src/misc.c"
+  },
+  {
+    "directory": "/home/quanghaictu/DATN_NAM/firmware/POWER_QUALITY",
+    "command": "arm-none-eabi-gcc -c -mcpu=cortex-m3 -mthumb   -DSTM32F10X_MD -DUSE_STDPERIPH_DRIVER -I. -ICore/Inc -IDrivers/CMSIS/Core -IDrivers/CMSIS/Device -IDrivers/STM32F10x_StdPeriph_Driver/inc -IMiddlewares/Third_Party/FreeRTOS/Source/include -IMiddlewares/Third_Party/FreeRTOS/Source/portable/GCC/ARM_CM3 -IHardware -IHardware/led -IHardware/delay -IHardware/pzem -Imiddle -Imiddle/uart_debug -Ithird_party -Ithird_party/ringbuff -Ithird_party/jsmn -Og -Wall -fdata-sections -ffunction-sections -g -gdwarf-2 -MMD -MP -MF\"build/stm32f10x_adc.d\" -Wa,-adhlns=build/stm32f10x_adc.lst Drivers/STM32F10x_StdPeriph_Driver/src/stm32f10x_adc.c -o build/stm32f10x_adc.o",
+    "file": "/home/quanghaictu/DATN_NAM/firmware/POWER_QUALITY/Drivers/STM32F10x_StdPeriph_Driver/src/stm32f10x_adc.c"
+  },
+  {
+    "directory": "/home/quanghaictu/DATN_NAM/firmware/POWER_QUALITY",
+    "command": "arm-none-eabi-gcc -c -mcpu=cortex-m3 -mthumb   -DSTM32F10X_MD -DUSE_STDPERIPH_DRIVER -I. -ICore/Inc -IDrivers/CMSIS/Core -IDrivers/CMSIS/Device -IDrivers/STM32F10x_StdPeriph_Driver/inc -IMiddlewares/Third_Party/FreeRTOS/Source/include -IMiddlewares/Third_Party/FreeRTOS/Source/portable/GCC/ARM_CM3 -IHardware -IHardware/led -IHardware/delay -IHardware/pzem -Imiddle -Imiddle/uart_debug -Ithird_party -Ithird_party/ringbuff -Ithird_party/jsmn -Og -Wall -fdata-sections -ffunction-sections -g -gdwarf-2 -MMD -MP -MF\"build/stm32f10x_bkp.d\" -Wa,-adhlns=build/stm32f10x_bkp.lst Drivers/STM32F10x_StdPeriph_Driver/src/stm32f10x_bkp.c -o build/stm32f10x_bkp.o",
+    "file": "/home/quanghaictu/DATN_NAM/firmware/POWER_QUALITY/Drivers/STM32F10x_StdPeriph_Driver/src/stm32f10x_bkp.c"
+  },
+  {
+    "directory": "/home/quanghaictu/DATN_NAM/firmware/POWER_QUALITY",
+    "command": "arm-none-eabi-gcc -c -mcpu=cortex-m3 -mthumb   -DSTM32F10X_MD -DUSE_STDPERIPH_DRIVER -I. -ICore/Inc -IDrivers/CMSIS/Core -IDrivers/CMSIS/Device -IDrivers/STM32F10x_StdPeriph_Driver/inc -IMiddlewares/Third_Party/FreeRTOS/Source/include -IMiddlewares/Third_Party/FreeRTOS/Source/portable/GCC/ARM_CM3 -IHardware -IHardware/led -IHardware/delay -IHardware/pzem -Imiddle -Imiddle/uart_debug -Ithird_party -Ithird_party/ringbuff -Ithird_party/jsmn -Og -Wall -fdata-sections -ffunction-sections -g -gdwarf-2 -MMD -MP -MF\"build/stm32f10x_can.d\" -Wa,-adhlns=build/stm32f10x_can.lst Drivers/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c -o build/stm32f10x_can.o",
+    "file": "/home/quanghaictu/DATN_NAM/firmware/POWER_QUALITY/Drivers/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c"
+  },
+  {
+    "directory": "/home/quanghaictu/DATN_NAM/firmware/POWER_QUALITY",
+    "command": "arm-none-eabi-gcc -c -mcpu=cortex-m3 -mthumb   -DSTM32F10X_MD -DUSE_STDPERIPH_DRIVER -I. -ICore/Inc -IDrivers/CMSIS/Core -IDrivers/CMSIS/Device -IDrivers/STM32F10x_StdPeriph_Driver/inc -IMiddlewares/Third_Party/FreeRTOS/Source/include -IMiddlewares/Third_Party/FreeRTOS/Source/portable/GCC/ARM_CM3 -IHardware -IHardware/led -IHardware/delay -IHardware/pzem -Imiddle -Imiddle/uart_debug -Ithird_party -Ithird_party/ringbuff -Ithird_party/jsmn -Og -Wall -fdata-sections -ffunction-sections -g -gdwarf-2 -MMD -MP -MF\"build/stm32f10x_cec.d\" -Wa,-adhlns=build/stm32f10x_cec.lst Drivers/STM32F10x_StdPeriph_Driver/src/stm32f10x_cec.c -o build/stm32f10x_cec.o",
+    "file": "/home/quanghaictu/DATN_NAM/firmware/POWER_QUALITY/Drivers/STM32F10x_StdPeriph_Driver/src/stm32f10x_cec.c"
+  },
+  {
+    "directory": "/home/quanghaictu/DATN_NAM/firmware/POWER_QUALITY",
+    "command": "arm-none-eabi-gcc -c -mcpu=cortex-m3 -mthumb   -DSTM32F10X_MD -DUSE_STDPERIPH_DRIVER -I. -ICore/Inc -IDrivers/CMSIS/Core -IDrivers/CMSIS/Device -IDrivers/STM32F10x_StdPeriph_Driver/inc -IMiddlewares/Third_Party/FreeRTOS/Source/include -IMiddlewares/Third_Party/FreeRTOS/Source/portable/GCC/ARM_CM3 -IHardware -IHardware/led -IHardware/delay -IHardware/pzem -Imiddle -Imiddle/uart_debug -Ithird_party -Ithird_party/ringbuff -Ithird_party/jsmn -Og -Wall -fdata-sections -ffunction-sections -g -gdwarf-2 -MMD -MP -MF\"build/stm32f10x_crc.d\" -Wa,-adhlns=build/stm32f10x_crc.lst Drivers/STM32F10x_StdPeriph_Driver/src/stm32f10x_crc.c -o build/stm32f10x_crc.o",
+    "file": "/home/quanghaictu/DATN_NAM/firmware/POWER_QUALITY/Drivers/STM32F10x_StdPeriph_Driver/src/stm32f10x_crc.c"
+  },
+  {
+    "directory": "/home/quanghaictu/DATN_NAM/firmware/POWER_QUALITY",
+    "command": "arm-none-eabi-gcc -c -mcpu=cortex-m3 -mthumb   -DSTM32F10X_MD -DUSE_STDPERIPH_DRIVER -I. -ICore/Inc -IDrivers/CMSIS/Core -IDrivers/CMSIS/Device -IDrivers/STM32F10x_StdPeriph_Driver/inc -IMiddlewares/Third_Party/FreeRTOS/Source/include -IMiddlewares/Third_Party/FreeRTOS/Source/portable/GCC/ARM_CM3 -IHardware -IHardware/led -IHardware/delay -IHardware/pzem -Imiddle -Imiddle/uart_debug -Ithird_party -Ithird_party/ringbuff -Ithird_party/jsmn -Og -Wall -fdata-sections -ffunction-sections -g -gdwarf-2 -MMD -MP -MF\"build/stm32f10x_dac.d\" -Wa,-adhlns=build/stm32f10x_dac.lst Drivers/STM32F10x_StdPeriph_Driver/src/stm32f10x_dac.c -o build/stm32f10x_dac.o",
+    "file": "/home/quanghaictu/DATN_NAM/firmware/POWER_QUALITY/Drivers/STM32F10x_StdPeriph_Driver/src/stm32f10x_dac.c"
+  },
+  {
+    "directory": "/home/quanghaictu/DATN_NAM/firmware/POWER_QUALITY",
+    "command": "arm-none-eabi-gcc -c -mcpu=cortex-m3 -mthumb   -DSTM32F10X_MD -DUSE_STDPERIPH_DRIVER -I. -ICore/Inc -IDrivers/CMSIS/Core -IDrivers/CMSIS/Device -IDrivers/STM32F10x_StdPeriph_Driver/inc -IMiddlewares/Third_Party/FreeRTOS/Source/include -IMiddlewares/Third_Party/FreeRTOS/Source/portable/GCC/ARM_CM3 -IHardware -IHardware/led -IHardware/delay -IHardware/pzem -Imiddle -Imiddle/uart_debug -Ithird_party -Ithird_party/ringbuff -Ithird_party/jsmn -Og -Wall -fdata-sections -ffunction-sections -g -gdwarf-2 -MMD -MP -MF\"build/stm32f10x_dbgmcu.d\" -Wa,-adhlns=build/stm32f10x_dbgmcu.lst Drivers/STM32F10x_StdPeriph_Driver/src/stm32f10x_dbgmcu.c -o build/stm32f10x_dbgmcu.o",
+    "file": "/home/quanghaictu/DATN_NAM/firmware/POWER_QUALITY/Drivers/STM32F10x_StdPeriph_Driver/src/stm32f10x_dbgmcu.c"
+  },
+  {
+    "directory": "/home/quanghaictu/DATN_NAM/firmware/POWER_QUALITY",
+    "command": "arm-none-eabi-gcc -c -mcpu=cortex-m3 -mthumb   -DSTM32F10X_MD -DUSE_STDPERIPH_DRIVER -I. -ICore/Inc -IDrivers/CMSIS/Core -IDrivers/CMSIS/Device -IDrivers/STM32F10x_StdPeriph_Driver/inc -IMiddlewares/Third_Party/FreeRTOS/Source/include -IMiddlewares/Third_Party/FreeRTOS/Source/portable/GCC/ARM_CM3 -IHardware -IHardware/led -IHardware/delay -IHardware/pzem -Imiddle -Imiddle/uart_debug -Ithird_party -Ithird_party/ringbuff -Ithird_party/jsmn -Og -Wall -fdata-sections -ffunction-sections -g -gdwarf-2 -MMD -MP -MF\"build/stm32f10x_dma.d\" -Wa,-adhlns=build/stm32f10x_dma.lst Drivers/STM32F10x_StdPeriph_Driver/src/stm32f10x_dma.c -o build/stm32f10x_dma.o",
+    "file": "/home/quanghaictu/DATN_NAM/firmware/POWER_QUALITY/Drivers/STM32F10x_StdPeriph_Driver/src/stm32f10x_dma.c"
+  },
+  {
+    "directory": "/home/quanghaictu/DATN_NAM/firmware/POWER_QUALITY",
+    "command": "arm-none-eabi-gcc -c -mcpu=cortex-m3 -mthumb   -DSTM32F10X_MD -DUSE_STDPERIPH_DRIVER -I. -ICore/Inc -IDrivers/CMSIS/Core -IDrivers/CMSIS/Device -IDrivers/STM32F10x_StdPeriph_Driver/inc -IMiddlewares/Third_Party/FreeRTOS/Source/include -IMiddlewares/Third_Party/FreeRTOS/Source/portable/GCC/ARM_CM3 -IHardware -IHardware/led -IHardware/delay -IHardware/pzem -Imiddle -Imiddle/uart_debug -Ithird_party -Ithird_party/ringbuff -Ithird_party/jsmn -Og -Wall -fdata-sections -ffunction-sections -g -gdwarf-2 -MMD -MP -MF\"build/stm32f10x_exti.d\" -Wa,-adhlns=build/stm32f10x_exti.lst Drivers/STM32F10x_StdPeriph_Driver/src/stm32f10x_exti.c -o build/stm32f10x_exti.o",
+    "file": "/home/quanghaictu/DATN_NAM/firmware/POWER_QUALITY/Drivers/STM32F10x_StdPeriph_Driver/src/stm32f10x_exti.c"
+  },
+  {
+    "directory": "/home/quanghaictu/DATN_NAM/firmware/POWER_QUALITY",
+    "command": "arm-none-eabi-gcc -c -mcpu=cortex-m3 -mthumb   -DSTM32F10X_MD -DUSE_STDPERIPH_DRIVER -I. -ICore/Inc -IDrivers/CMSIS/Core -IDrivers/CMSIS/Device -IDrivers/STM32F10x_StdPeriph_Driver/inc -IMiddlewares/Third_Party/FreeRTOS/Source/include -IMiddlewares/Third_Party/FreeRTOS/Source/portable/GCC/ARM_CM3 -IHardware -IHardware/led -IHardware/delay -IHardware/pzem -Imiddle -Imiddle/uart_debug -Ithird_party -Ithird_party/ringbuff -Ithird_party/jsmn -Og -Wall -fdata-sections -ffunction-sections -g -gdwarf-2 -MMD -MP -MF\"build/stm32f10x_flash.d\" -Wa,-adhlns=build/stm32f10x_flash.lst Drivers/STM32F10x_StdPeriph_Driver/src/stm32f10x_flash.c -o build/stm32f10x_flash.o",
+    "file": "/home/quanghaictu/DATN_NAM/firmware/POWER_QUALITY/Drivers/STM32F10x_StdPeriph_Driver/src/stm32f10x_flash.c"
+  },
+  {
+    "directory": "/home/quanghaictu/DATN_NAM/firmware/POWER_QUALITY",
+    "command": "arm-none-eabi-gcc -c -mcpu=cortex-m3 -mthumb   -DSTM32F10X_MD -DUSE_STDPERIPH_DRIVER -I. -ICore/Inc -IDrivers/CMSIS/Core -IDrivers/CMSIS/Device -IDrivers/STM32F10x_StdPeriph_Driver/inc -IMiddlewares/Third_Party/FreeRTOS/Source/include -IMiddlewares/Third_Party/FreeRTOS/Source/portable/GCC/ARM_CM3 -IHardware -IHardware/led -IHardware/delay -IHardware/pzem -Imiddle -Imiddle/uart_debug -Ithird_party -Ithird_party/ringbuff -Ithird_party/jsmn -Og -Wall -fdata-sections -ffunction-sections -g -gdwarf-2 -MMD -MP -MF\"build/stm32f10x_fsmc.d\" -Wa,-adhlns=build/stm32f10x_fsmc.lst Drivers/STM32F10x_StdPeriph_Driver/src/stm32f10x_fsmc.c -o build/stm32f10x_fsmc.o",
+    "file": "/home/quanghaictu/DATN_NAM/firmware/POWER_QUALITY/Drivers/STM32F10x_StdPeriph_Driver/src/stm32f10x_fsmc.c"
+  },
+  {
+    "directory": "/home/quanghaictu/DATN_NAM/firmware/POWER_QUALITY",
+    "command": "arm-none-eabi-gcc -c -mcpu=cortex-m3 -mthumb   -DSTM32F10X_MD -DUSE_STDPERIPH_DRIVER -I. -ICore/Inc -IDrivers/CMSIS/Core -IDrivers/CMSIS/Device -IDrivers/STM32F10x_StdPeriph_Driver/inc -IMiddlewares/Third_Party/FreeRTOS/Source/include -IMiddlewares/Third_Party/FreeRTOS/Source/portable/GCC/ARM_CM3 -IHardware -IHardware/led -IHardware/delay -IHardware/pzem -Imiddle -Imiddle/uart_debug -Ithird_party -Ithird_party/ringbuff -Ithird_party/jsmn -Og -Wall -fdata-sections -ffunction-sections -g -gdwarf-2 -MMD -MP -MF\"build/stm32f10x_gpio.d\" -Wa,-adhlns=build/stm32f10x_gpio.lst Drivers/STM32F10x_StdPeriph_Driver/src/stm32f10x_gpio.c -o build/stm32f10x_gpio.o",
+    "file": "/home/quanghaictu/DATN_NAM/firmware/POWER_QUALITY/Drivers/STM32F10x_StdPeriph_Driver/src/stm32f10x_gpio.c"
+  },
+  {
+    "directory": "/home/quanghaictu/DATN_NAM/firmware/POWER_QUALITY",
+    "command": "arm-none-eabi-gcc -c -mcpu=cortex-m3 -mthumb   -DSTM32F10X_MD -DUSE_STDPERIPH_DRIVER -I. -ICore/Inc -IDrivers/CMSIS/Core -IDrivers/CMSIS/Device -IDrivers/STM32F10x_StdPeriph_Driver/inc -IMiddlewares/Third_Party/FreeRTOS/Source/include -IMiddlewares/Third_Party/FreeRTOS/Source/portable/GCC/ARM_CM3 -IHardware -IHardware/led -IHardware/delay -IHardware/pzem -Imiddle -Imiddle/uart_debug -Ithird_party -Ithird_party/ringbuff -Ithird_party/jsmn -Og -Wall -fdata-sections -ffunction-sections -g -gdwarf-2 -MMD -MP -MF\"build/stm32f10x_i2c.d\" -Wa,-adhlns=build/stm32f10x_i2c.lst Drivers/STM32F10x_StdPeriph_Driver/src/stm32f10x_i2c.c -o build/stm32f10x_i2c.o",
+    "file": "/home/quanghaictu/DATN_NAM/firmware/POWER_QUALITY/Drivers/STM32F10x_StdPeriph_Driver/src/stm32f10x_i2c.c"
+  },
+  {
+    "directory": "/home/quanghaictu/DATN_NAM/firmware/POWER_QUALITY",
+    "command": "arm-none-eabi-gcc -c -mcpu=cortex-m3 -mthumb   -DSTM32F10X_MD -DUSE_STDPERIPH_DRIVER -I. -ICore/Inc -IDrivers/CMSIS/Core -IDrivers/CMSIS/Device -IDrivers/STM32F10x_StdPeriph_Driver/inc -IMiddlewares/Third_Party/FreeRTOS/Source/include -IMiddlewares/Third_Party/FreeRTOS/Source/portable/GCC/ARM_CM3 -IHardware -IHardware/led -IHardware/delay -IHardware/pzem -Imiddle -Imiddle/uart_debug -Ithird_party -Ithird_party/ringbuff -Ithird_party/jsmn -Og -Wall -fdata-sections -ffunction-sections -g -gdwarf-2 -MMD -MP -MF\"build/stm32f10x_iwdg.d\" -Wa,-adhlns=build/stm32f10x_iwdg.lst Drivers/STM32F10x_StdPeriph_Driver/src/stm32f10x_iwdg.c -o build/stm32f10x_iwdg.o",
+    "file": "/home/quanghaictu/DATN_NAM/firmware/POWER_QUALITY/Drivers/STM32F10x_StdPeriph_Driver/src/stm32f10x_iwdg.c"
+  },
+  {
+    "directory": "/home/quanghaictu/DATN_NAM/firmware/POWER_QUALITY",
+    "command": "arm-none-eabi-gcc -c -mcpu=cortex-m3 -mthumb   -DSTM32F10X_MD -DUSE_STDPERIPH_DRIVER -I. -ICore/Inc -IDrivers/CMSIS/Core -IDrivers/CMSIS/Device -IDrivers/STM32F10x_StdPeriph_Driver/inc -IMiddlewares/Third_Party/FreeRTOS/Source/include -IMiddlewares/Third_Party/FreeRTOS/Source/portable/GCC/ARM_CM3 -IHardware -IHardware/led -IHardware/delay -IHardware/pzem -Imiddle -Imiddle/uart_debug -Ithird_party -Ithird_party/ringbuff -Ithird_party/jsmn -Og -Wall -fdata-sections -ffunction-sections -g -gdwarf-2 -MMD -MP -MF\"build/stm32f10x_pwr.d\" -Wa,-adhlns=build/stm32f10x_pwr.lst Drivers/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c -o build/stm32f10x_pwr.o",
+    "file": "/home/quanghaictu/DATN_NAM/firmware/POWER_QUALITY/Drivers/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c"
+  },
+  {
+    "directory": "/home/quanghaictu/DATN_NAM/firmware/POWER_QUALITY",
+    "command": "arm-none-eabi-gcc -c -mcpu=cortex-m3 -mthumb   -DSTM32F10X_MD -DUSE_STDPERIPH_DRIVER -I. -ICore/Inc -IDrivers/CMSIS/Core -IDrivers/CMSIS/Device -IDrivers/STM32F10x_StdPeriph_Driver/inc -IMiddlewares/Third_Party/FreeRTOS/Source/include -IMiddlewares/Third_Party/FreeRTOS/Source/portable/GCC/ARM_CM3 -IHardware -IHardware/led -IHardware/delay -IHardware/pzem -Imiddle -Imiddle/uart_debug -Ithird_party -Ithird_party/ringbuff -Ithird_party/jsmn -Og -Wall -fdata-sections -ffunction-sections -g -gdwarf-2 -MMD -MP -MF\"build/stm32f10x_rcc.d\" -Wa,-adhlns=build/stm32f10x_rcc.lst Drivers/STM32F10x_StdPeriph_Driver/src/stm32f10x_rcc.c -o build/stm32f10x_rcc.o",
+    "file": "/home/quanghaictu/DATN_NAM/firmware/POWER_QUALITY/Drivers/STM32F10x_StdPeriph_Driver/src/stm32f10x_rcc.c"
+  },
+  {
+    "directory": "/home/quanghaictu/DATN_NAM/firmware/POWER_QUALITY",
+    "command": "arm-none-eabi-gcc -c -mcpu=cortex-m3 -mthumb   -DSTM32F10X_MD -DUSE_STDPERIPH_DRIVER -I. -ICore/Inc -IDrivers/CMSIS/Core -IDrivers/CMSIS/Device -IDrivers/STM32F10x_StdPeriph_Driver/inc -IMiddlewares/Third_Party/FreeRTOS/Source/include -IMiddlewares/Third_Party/FreeRTOS/Source/portable/GCC/ARM_CM3 -IHardware -IHardware/led -IHardware/delay -IHardware/pzem -Imiddle -Imiddle/uart_debug -Ithird_party -Ithird_party/ringbuff -Ithird_party/jsmn -Og -Wall -fdata-sections -ffunction-sections -g -gdwarf-2 -MMD -MP -MF\"build/stm32f10x_rtc.d\" -Wa,-adhlns=build/stm32f10x_rtc.lst Drivers/STM32F10x_StdPeriph_Driver/src/stm32f10x_rtc.c -o build/stm32f10x_rtc.o",
+    "file": "/home/quanghaictu/DATN_NAM/firmware/POWER_QUALITY/Drivers/STM32F10x_StdPeriph_Driver/src/stm32f10x_rtc.c"
+  },
+  {
+    "directory": "/home/quanghaictu/DATN_NAM/firmware/POWER_QUALITY",
+    "command": "arm-none-eabi-gcc -c -mcpu=cortex-m3 -mthumb   -DSTM32F10X_MD -DUSE_STDPERIPH_DRIVER -I. -ICore/Inc -IDrivers/CMSIS/Core -IDrivers/CMSIS/Device -IDrivers/STM32F10x_StdPeriph_Driver/inc -IMiddlewares/Third_Party/FreeRTOS/Source/include -IMiddlewares/Third_Party/FreeRTOS/Source/portable/GCC/ARM_CM3 -IHardware -IHardware/led -IHardware/delay -IHardware/pzem -Imiddle -Imiddle/uart_debug -Ithird_party -Ithird_party/ringbuff -Ithird_party/jsmn -Og -Wall -fdata-sections -ffunction-sections -g -gdwarf-2 -MMD -MP -MF\"build/stm32f10x_sdio.d\" -Wa,-adhlns=build/stm32f10x_sdio.lst Drivers/STM32F10x_StdPeriph_Driver/src/stm32f10x_sdio.c -o build/stm32f10x_sdio.o",
+    "file": "/home/quanghaictu/DATN_NAM/firmware/POWER_QUALITY/Drivers/STM32F10x_StdPeriph_Driver/src/stm32f10x_sdio.c"
+  },
+  {
+    "directory": "/home/quanghaictu/DATN_NAM/firmware/POWER_QUALITY",
+    "command": "arm-none-eabi-gcc -c -mcpu=cortex-m3 -mthumb   -DSTM32F10X_MD -DUSE_STDPERIPH_DRIVER -I. -ICore/Inc -IDrivers/CMSIS/Core -IDrivers/CMSIS/Device -IDrivers/STM32F10x_StdPeriph_Driver/inc -IMiddlewares/Third_Party/FreeRTOS/Source/include -IMiddlewares/Third_Party/FreeRTOS/Source/portable/GCC/ARM_CM3 -IHardware -IHardware/led -IHardware/delay -IHardware/pzem -Imiddle -Imiddle/uart_debug -Ithird_party -Ithird_party/ringbuff -Ithird_party/jsmn -Og -Wall -fdata-sections -ffunction-sections -g -gdwarf-2 -MMD -MP -MF\"build/stm32f10x_spi.d\" -Wa,-adhlns=build/stm32f10x_spi.lst Drivers/STM32F10x_StdPeriph_Driver/src/stm32f10x_spi.c -o build/stm32f10x_spi.o",
+    "file": "/home/quanghaictu/DATN_NAM/firmware/POWER_QUALITY/Drivers/STM32F10x_StdPeriph_Driver/src/stm32f10x_spi.c"
+  },
+  {
+    "directory": "/home/quanghaictu/DATN_NAM/firmware/POWER_QUALITY",
+    "command": "arm-none-eabi-gcc -c -mcpu=cortex-m3 -mthumb   -DSTM32F10X_MD -DUSE_STDPERIPH_DRIVER -I. -ICore/Inc -IDrivers/CMSIS/Core -IDrivers/CMSIS/Device -IDrivers/STM32F10x_StdPeriph_Driver/inc -IMiddlewares/Third_Party/FreeRTOS/Source/include -IMiddlewares/Third_Party/FreeRTOS/Source/portable/GCC/ARM_CM3 -IHardware -IHardware/led -IHardware/delay -IHardware/pzem -Imiddle -Imiddle/uart_debug -Ithird_party -Ithird_party/ringbuff -Ithird_party/jsmn -Og -Wall -fdata-sections -ffunction-sections -g -gdwarf-2 -MMD -MP -MF\"build/stm32f10x_tim.d\" -Wa,-adhlns=build/stm32f10x_tim.lst Drivers/STM32F10x_StdPeriph_Driver/src/stm32f10x_tim.c -o build/stm32f10x_tim.o",
+    "file": "/home/quanghaictu/DATN_NAM/firmware/POWER_QUALITY/Drivers/STM32F10x_StdPeriph_Driver/src/stm32f10x_tim.c"
+  },
+  {
+    "directory": "/home/quanghaictu/DATN_NAM/firmware/POWER_QUALITY",
+    "command": "arm-none-eabi-gcc -c -mcpu=cortex-m3 -mthumb   -DSTM32F10X_MD -DUSE_STDPERIPH_DRIVER -I. -ICore/Inc -IDrivers/CMSIS/Core -IDrivers/CMSIS/Device -IDrivers/STM32F10x_StdPeriph_Driver/inc -IMiddlewares/Third_Party/FreeRTOS/Source/include -IMiddlewares/Third_Party/FreeRTOS/Source/portable/GCC/ARM_CM3 -IHardware -IHardware/led -IHardware/delay -IHardware/pzem -Imiddle -Imiddle/uart_debug -Ithird_party -Ithird_party/ringbuff -Ithird_party/jsmn -Og -Wall -fdata-sections -ffunction-sections -g -gdwarf-2 -MMD -MP -MF\"build/stm32f10x_usart.d\" -Wa,-adhlns=build/stm32f10x_usart.lst Drivers/STM32F10x_StdPeriph_Driver/src/stm32f10x_usart.c -o build/stm32f10x_usart.o",
+    "file": "/home/quanghaictu/DATN_NAM/firmware/POWER_QUALITY/Drivers/STM32F10x_StdPeriph_Driver/src/stm32f10x_usart.c"
+  },
+  {
+    "directory": "/home/quanghaictu/DATN_NAM/firmware/POWER_QUALITY",
+    "command": "arm-none-eabi-gcc -c -mcpu=cortex-m3 -mthumb   -DSTM32F10X_MD -DUSE_STDPERIPH_DRIVER -I. -ICore/Inc -IDrivers/CMSIS/Core -IDrivers/CMSIS/Device -IDrivers/STM32F10x_StdPeriph_Driver/inc -IMiddlewares/Third_Party/FreeRTOS/Source/include -IMiddlewares/Third_Party/FreeRTOS/Source/portable/GCC/ARM_CM3 -IHardware -IHardware/led -IHardware/delay -IHardware/pzem -Imiddle -Imiddle/uart_debug -Ithird_party -Ithird_party/ringbuff -Ithird_party/jsmn -Og -Wall -fdata-sections -ffunction-sections -g -gdwarf-2 -MMD -MP -MF\"build/stm32f10x_wwdg.d\" -Wa,-adhlns=build/stm32f10x_wwdg.lst Drivers/STM32F10x_StdPeriph_Driver/src/stm32f10x_wwdg.c -o build/stm32f10x_wwdg.o",
+    "file": "/home/quanghaictu/DATN_NAM/firmware/POWER_QUALITY/Drivers/STM32F10x_StdPeriph_Driver/src/stm32f10x_wwdg.c"
+  },
+  {
+    "directory": "/home/quanghaictu/DATN_NAM/firmware/POWER_QUALITY",
+    "command": "arm-none-eabi-gcc -c -mcpu=cortex-m3 -mthumb   -DSTM32F10X_MD -DUSE_STDPERIPH_DRIVER -I. -ICore/Inc -IDrivers/CMSIS/Core -IDrivers/CMSIS/Device -IDrivers/STM32F10x_StdPeriph_Driver/inc -IMiddlewares/Third_Party/FreeRTOS/Source/include -IMiddlewares/Third_Party/FreeRTOS/Source/portable/GCC/ARM_CM3 -IHardware -IHardware/led -IHardware/delay -IHardware/pzem -Imiddle -Imiddle/uart_debug -Ithird_party -Ithird_party/ringbuff -Ithird_party/jsmn -Og -Wall -fdata-sections -ffunction-sections -g -gdwarf-2 -MMD -MP -MF\"build/led.d\" -Wa,-adhlns=build/led.lst Hardware/led/led.c -o build/led.o",
+    "file": "/home/quanghaictu/DATN_NAM/firmware/POWER_QUALITY/Hardware/led/led.c"
+  },
+  {
+    "directory": "/home/quanghaictu/DATN_NAM/firmware/POWER_QUALITY",
+    "command": "arm-none-eabi-gcc -c -mcpu=cortex-m3 -mthumb   -DSTM32F10X_MD -DUSE_STDPERIPH_DRIVER -I. -ICore/Inc -IDrivers/CMSIS/Core -IDrivers/CMSIS/Device -IDrivers/STM32F10x_StdPeriph_Driver/inc -IMiddlewares/Third_Party/FreeRTOS/Source/include -IMiddlewares/Third_Party/FreeRTOS/Source/portable/GCC/ARM_CM3 -IHardware -IHardware/led -IHardware/delay -IHardware/pzem -Imiddle -Imiddle/uart_debug -Ithird_party -Ithird_party/ringbuff -Ithird_party/jsmn -Og -Wall -fdata-sections -ffunction-sections -g -gdwarf-2 -MMD -MP -MF\"build/delay.d\" -Wa,-adhlns=build/delay.lst Hardware/delay/delay.c -o build/delay.o",
+    "file": "/home/quanghaictu/DATN_NAM/firmware/POWER_QUALITY/Hardware/delay/delay.c"
+  },
+  {
+    "directory": "/home/quanghaictu/DATN_NAM/firmware/POWER_QUALITY",
+    "command": "arm-none-eabi-gcc -c -mcpu=cortex-m3 -mthumb   -DSTM32F10X_MD -DUSE_STDPERIPH_DRIVER -I. -ICore/Inc -IDrivers/CMSIS/Core -IDrivers/CMSIS/Device -IDrivers/STM32F10x_StdPeriph_Driver/inc -IMiddlewares/Third_Party/FreeRTOS/Source/include -IMiddlewares/Third_Party/FreeRTOS/Source/portable/GCC/ARM_CM3 -IHardware -IHardware/led -IHardware/delay -IHardware/pzem -Imiddle -Imiddle/uart_debug -Ithird_party -Ithird_party/ringbuff -Ithird_party/jsmn -Og -Wall -fdata-sections -ffunction-sections -g -gdwarf-2 -MMD -MP -MF\"build/uart_debug.d\" -Wa,-adhlns=build/uart_debug.lst middle/uart_debug/uart_debug.c -o build/uart_debug.o",
+    "file": "/home/quanghaictu/DATN_NAM/firmware/POWER_QUALITY/middle/uart_debug/uart_debug.c"
+  },
+  {
+    "directory": "/home/quanghaictu/DATN_NAM/firmware/POWER_QUALITY",
+    "command": "arm-none-eabi-gcc -c -mcpu=cortex-m3 -mthumb   -DSTM32F10X_MD -DUSE_STDPERIPH_DRIVER -I. -ICore/Inc -IDrivers/CMSIS/Core -IDrivers/CMSIS/Device -IDrivers/STM32F10x_StdPeriph_Driver/inc -IMiddlewares/Third_Party/FreeRTOS/Source/include -IMiddlewares/Third_Party/FreeRTOS/Source/portable/GCC/ARM_CM3 -IHardware -IHardware/led -IHardware/delay -IHardware/pzem -Imiddle -Imiddle/uart_debug -Ithird_party -Ithird_party/ringbuff -Ithird_party/jsmn -Og -Wall -fdata-sections -ffunction-sections -g -gdwarf-2 -MMD -MP -MF\"build/ringbuff.d\" -Wa,-adhlns=build/ringbuff.lst third_party/ringbuff/ringbuff.c -o build/ringbuff.o",
+    "file": "/home/quanghaictu/DATN_NAM/firmware/POWER_QUALITY/third_party/ringbuff/ringbuff.c"
+  },
+  {
+    "directory": "/home/quanghaictu/DATN_NAM/firmware/POWER_QUALITY",
+    "command": "arm-none-eabi-gcc -c -mcpu=cortex-m3 -mthumb   -DSTM32F10X_MD -DUSE_STDPERIPH_DRIVER -I. -ICore/Inc -IDrivers/CMSIS/Core -IDrivers/CMSIS/Device -IDrivers/STM32F10x_StdPeriph_Driver/inc -IMiddlewares/Third_Party/FreeRTOS/Source/include -IMiddlewares/Third_Party/FreeRTOS/Source/portable/GCC/ARM_CM3 -IHardware -IHardware/led -IHardware/delay -IHardware/pzem -Imiddle -Imiddle/uart_debug -Ithird_party -Ithird_party/ringbuff -Ithird_party/jsmn -Og -Wall -fdata-sections -ffunction-sections -g -gdwarf-2 -MMD -MP -MF\"build/jsmn.d\" -Wa,-adhlns=build/jsmn.lst third_party/jsmn/jsmn.c -o build/jsmn.o",
+    "file": "/home/quanghaictu/DATN_NAM/firmware/POWER_QUALITY/third_party/jsmn/jsmn.c"
+  },
+  {
+    "directory": "/home/quanghaictu/DATN_NAM/firmware/POWER_QUALITY",
+    "command": "arm-none-eabi-gcc -x assembler-with-cpp -c -mcpu=cortex-m3 -mthumb   -DSTM32F10X_MD -DUSE_STDPERIPH_DRIVER -I. -ICore/Inc -IDrivers/CMSIS/Core -IDrivers/CMSIS/Device -IDrivers/STM32F10x_StdPeriph_Driver/inc -IMiddlewares/Third_Party/FreeRTOS/Source/include -IMiddlewares/Third_Party/FreeRTOS/Source/portable/GCC/ARM_CM3 -IHardware -IHardware/led -IHardware/delay -IHardware/pzem -Imiddle -Imiddle/uart_debug -Ithird_party -Ithird_party/ringbuff -Ithird_party/jsmn -Og -Wall -fdata-sections -ffunction-sections -g -gdwarf-2 -MMD -MP -MF\"build/startup_stm32f10x_md.d\" Drivers/CMSIS/Device/Startup/startup_stm32f10x_md.s -o build/startup_stm32f10x_md.o",
+    "file": "/home/quanghaictu/DATN_NAM/firmware/POWER_QUALITY/Drivers/CMSIS/Device/Startup/startup_stm32f10x_md.s"
+  }
+]
