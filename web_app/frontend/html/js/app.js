@@ -3738,12 +3738,11 @@ document.addEventListener("DOMContentLoaded", () => {
         });
       }
 
+      const liveHub = foundHub || getActiveIrHub() || customDevices.find(d => d.type === "ir_hub" || d.id === "dev_ir_hub_hunonic");
       if (d.ac_count !== undefined) {
-        foundHub = getActiveIrHub();
-        const hubDev = foundHub;
-        if (hubDev) {
+        if (liveHub) {
           if (d.ac_count === 0 || !d.ac_devices || Object.keys(d.ac_devices).length === 0) {
-            hubDev.children = [];
+            liveHub.children = [];
           } else if (d.ac_devices && typeof d.ac_devices === "object") {
             const updatedChildren = [];
             for (const [did, dinfo] of Object.entries(d.ac_devices)) {
@@ -3760,14 +3759,14 @@ document.addEventListener("DOMContentLoaded", () => {
                 online: Boolean(dinfo.online && d.ac_online)
               });
             }
-            hubDev.children = updatedChildren;
+            liveHub.children = updatedChildren;
           }
           localStorage.setItem("gate_custom_devices", JSON.stringify(customDevices));
 
           // Nếu đang xem sub-view của IR Hub -> render lại ngay
           const subViewEl = document.getElementById("view-device-hub");
           if (subViewEl && subViewEl.style.display !== "none" && currentHubView && currentHubView.type === "ir_hub") {
-            renderSubViewDevices("ir_hub", hubDev);
+            renderSubViewDevices("ir_hub", liveHub);
           }
         }
       }
@@ -3784,9 +3783,54 @@ document.addEventListener("DOMContentLoaded", () => {
       }
 
       // Cập nhật tức thời Drawer Điều Hòa hoặc Trạm IR nếu đang mở
-      if (currentActiveIrChild) {
-        if (hubDev && hubDev.children) {
-          const freshChild = hubDev.children.find(c => String(c.id) === String(currentActiveIrChild.id));
+      const drawerEl = document.getElementById("device-detail-drawer") || deviceDetailDrawer;
+      const isDrawerOpen = drawerEl && drawerEl.classList.contains("open");
+      const isAcDrawerActive = isDrawerOpen && drawerAcPanel && drawerAcPanel.style.display !== "none";
+
+      if (isAcDrawerActive) {
+        let activeChild = currentActiveIrChild;
+        const targetId = (activeChild && activeChild.id) || currentDrawerTarget;
+
+        let freshChild = null;
+        if (liveHub && liveHub.children && targetId) {
+          freshChild = liveHub.children.find(c => String(c.id) === String(targetId));
+        }
+        if (!freshChild && d.ac_devices && targetId && d.ac_devices[targetId]) {
+          const dinfo = d.ac_devices[targetId];
+          freshChild = {
+            id: String(targetId),
+            name: dinfo.name || `Điều hòa ${targetId}`,
+            type: "ac",
+            brand: dinfo.brand || 0,
+            power: dinfo.power || 0,
+            state: dinfo.power || 0,
+            temp: dinfo.temp || 25,
+            mode: dinfo.mode || 1,
+            fan: dinfo.fan || 0,
+            online: Boolean(dinfo.online && d.ac_online)
+          };
+        }
+
+        if (freshChild) {
+          if (activeChild) {
+            Object.assign(activeChild, freshChild);
+          } else {
+            activeChild = freshChild;
+            currentActiveIrChild = freshChild;
+          }
+        }
+
+        const devToUpdate = activeChild || freshChild;
+        if (devToUpdate) {
+          acState.power = devToUpdate.power;
+          acState.temp = devToUpdate.temp;
+          acState.mode = devToUpdate.mode;
+          acState.fan = devToUpdate.fan;
+          updateDrawerAcUI(devToUpdate);
+        }
+      } else if (currentActiveIrChild) {
+        if (liveHub && liveHub.children) {
+          const freshChild = liveHub.children.find(c => String(c.id) === String(currentActiveIrChild.id));
           if (freshChild) {
             Object.assign(currentActiveIrChild, freshChild);
             acState.power = freshChild.power;
@@ -3796,8 +3840,9 @@ document.addEventListener("DOMContentLoaded", () => {
           }
         }
         updateDrawerAcUI(currentActiveIrChild);
-      } else if (currentDrawerTarget) {
-        const curDev = customDevices.find(cd => cd.id === currentDrawerTarget);
+      } else if (currentDrawerTarget && isDrawerOpen) {
+        const curDev = (liveHub && liveHub.children && liveHub.children.find(c => String(c.id) === String(currentDrawerTarget)))
+                      || customDevices.find(cd => cd.id === currentDrawerTarget);
         if (curDev) {
           if (curDev.type === "ac") {
             updateDrawerAcUI(curDev);
