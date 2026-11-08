@@ -1642,6 +1642,10 @@ document.addEventListener("DOMContentLoaded", () => {
   let previousPresence = null;
 
   function handlePresenceNotification() {
+    // CHỈ xử lý cảnh báo khi người dùng ĐÃ THÊM Node Cảm Biến vào Gateway
+    const isSensorAdded = customDevices.some(d => d.type === "sensor" || d.id === "dev_espnow_node_1" || (d.id && d.id.includes("espnow")));
+    if (!isSensorAdded) return;
+
     if (!sensorData.hasData || !sensorData.isOnline || !isGatewayOnline) return;
     if (![true, false, 0, 1, "0", "1"].includes(sensorData.presence)) return;
     const occupied = sensorData.presence === true || Number(sensorData.presence) === 1;
@@ -3907,18 +3911,28 @@ document.addEventListener("DOMContentLoaded", () => {
           }
         });
 
-        if (weatherTempDisplay) weatherTempDisplay.innerHTML = `${Math.round(Number(sensorData.temp))}<span class="deg-unit">°C</span>`;
-        if (weatherHumDisplay) {
-          weatherHumDisplay.innerText = sensorData.hum > 120 ? `Áp suất ${Math.round(Number(sensorData.hum))} hPa` : `Độ ẩm ${Math.round(Number(sensorData.hum))}%`;
-        }
-
-        const presenceDisplay = document.getElementById("weather-presence-display");
-        if (presenceDisplay) {
-          if (sensorData.presence) {
-            presenceDisplay.innerHTML = `<span class="sep">&bull;</span> <span style="color:#10b981; font-weight:600;"><i class="fa-solid fa-person-walking"></i> Có người</span>`;
-          } else {
-            presenceDisplay.innerHTML = `<span class="sep">&bull;</span> <span style="color:#94a3b8;"><i class="fa-solid fa-house-user"></i> Phòng trống</span>`;
+        const isSensorAdded = customDevices.some(cd => cd.type === "sensor" || cd.id === "dev_espnow_node_1" || (cd.id && cd.id.includes("espnow")));
+        if (isSensorAdded && isNodeOnline && sensorData.hasData) {
+          if (weatherTempDisplay) weatherTempDisplay.innerHTML = `${Math.round(Number(sensorData.temp))}<span class="deg-unit">°C</span>`;
+          if (weatherHumDisplay) {
+            weatherHumDisplay.innerText = sensorData.hum > 120 ? `Áp suất ${Math.round(Number(sensorData.hum))} hPa` : `Độ ẩm ${Math.round(Number(sensorData.hum))}%`;
           }
+
+          const presenceDisplay = document.getElementById("weather-presence-display");
+          if (presenceDisplay) {
+            if (sensorData.presence) {
+              presenceDisplay.innerHTML = `<span class="sep">&bull;</span> <span style="color:#10b981; font-weight:600;"><i class="fa-solid fa-person-walking"></i> Có người</span>`;
+            } else {
+              presenceDisplay.innerHTML = `<span class="sep">&bull;</span> <span style="color:#94a3b8;"><i class="fa-solid fa-house-user"></i> Phòng trống</span>`;
+            }
+          }
+        } else {
+          if (weatherTempDisplay) weatherTempDisplay.innerHTML = `--<span class="deg-unit">°C</span>`;
+          if (weatherHumDisplay) {
+            weatherHumDisplay.innerText = isSensorAdded ? "Cảm biến ngoại tuyến" : "Chưa liên kết cảm biến";
+          }
+          const presenceDisplay = document.getElementById("weather-presence-display");
+          if (presenceDisplay) presenceDisplay.innerHTML = "";
         }
       } else {
         sensorData.hasData = false;
