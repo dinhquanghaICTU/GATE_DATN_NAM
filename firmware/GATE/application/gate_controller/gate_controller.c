@@ -289,7 +289,7 @@ void gate_controller_task(void *pvParam) {
       s_initial_sync_ready = true;
       s_periodic_sync_counter = 0;
     }
-    if (s_periodic_sync_counter >= 30) {
+    if (s_periodic_sync_counter >= 15) {
       s_periodic_sync_counter = 0;
       if (wifi_is_connected()) {
         esp_err_t sync_err = hunonic_bridge_sync_devices();

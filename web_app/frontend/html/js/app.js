@@ -2604,8 +2604,10 @@ document.addEventListener("DOMContentLoaded", () => {
     foundHub = getActiveIrHub();
     refreshPresencePanel();
     if (currentHubView) {
+      const liveDev = customDevices.find(d => currentHubView.dev && d.id === currentHubView.dev.id) || foundHub;
+      currentHubView.dev = liveDev;
       if (!isSubViewHolding) {
-        renderSubViewDevices(currentHubView.type, currentHubView.dev);
+        renderSubViewDevices(currentHubView.type, liveDev);
       }
       if (!foundHub) document.querySelectorAll('[data-gw-action="open_ir_hub"]').forEach(card => card.remove());
       if (localStorage.getItem("gate_sensor_deleted") === "true" || !customDevices.some(d => d.type === "sensor")) {
@@ -3764,11 +3766,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
           // Nếu đang xem sub-view của IR Hub -> render lại ngay
           const subViewEl = document.getElementById("view-device-hub");
-          if (subViewEl && subViewEl.style.display !== "none") {
-            const titleEl = document.getElementById("subview-title");
-            if (titleEl && titleEl.innerText === (hubDev.name || "IR trung tâm")) {
-              renderSubViewDevices("ir_hub", hubDev);
-            }
+          if (subViewEl && subViewEl.style.display !== "none" && currentHubView && currentHubView.type === "ir_hub") {
+            renderSubViewDevices("ir_hub", hubDev);
           }
         }
       }
@@ -3786,6 +3785,16 @@ document.addEventListener("DOMContentLoaded", () => {
 
       // Cập nhật tức thời Drawer Điều Hòa hoặc Trạm IR nếu đang mở
       if (currentActiveIrChild) {
+        if (hubDev && hubDev.children) {
+          const freshChild = hubDev.children.find(c => String(c.id) === String(currentActiveIrChild.id));
+          if (freshChild) {
+            Object.assign(currentActiveIrChild, freshChild);
+            acState.power = freshChild.power;
+            acState.temp = freshChild.temp;
+            acState.mode = freshChild.mode;
+            acState.fan = freshChild.fan;
+          }
+        }
         updateDrawerAcUI(currentActiveIrChild);
       } else if (currentDrawerTarget) {
         const curDev = customDevices.find(cd => cd.id === currentDrawerTarget);

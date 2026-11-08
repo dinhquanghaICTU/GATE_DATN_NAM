@@ -932,49 +932,46 @@ static void parse_ws_device_message(cJSON *msg) {
   cJSON *evt = cJSON_GetObjectItem(msg, "event");
   const char *evt_str = (evt && evt->valuestring) ? evt->valuestring : "";
 
+  char dev_id[32] = {0};
   cJSON *id_item = cJSON_GetObjectItem(msg, "id");
-  const char *dev_id =
-      (id_item && id_item->valuestring) ? id_item->valuestring : "";
+  json_id_to_string(id_item, dev_id, sizeof(dev_id));
 
   int power = -1, temp = -1, mode = -1, fan = -1, brand = -1;
   bool found_state = false;
 
-  if (strcmp(evt_str, "AC_STATE") == 0) {
-    cJSON *meta = cJSON_GetObjectItem(msg, "metaData");
-    if (meta) {
-      cJSON *st = NULL;
-      if (cJSON_IsString(meta) && meta->valuestring) {
-        st = cJSON_Parse(meta->valuestring);
-      } else if (cJSON_IsObject(meta)) {
-        st = meta;
+  // 1. Kiểm tra trong metaData (phổ biến ở AC_STATE)
+  cJSON *meta = cJSON_GetObjectItem(msg, "metaData");
+  if (meta) {
+    cJSON *st = NULL;
+    if (cJSON_IsString(meta) && meta->valuestring) {
+      st = cJSON_Parse(meta->valuestring);
+    } else if (cJSON_IsObject(meta)) {
+      st = meta;
+    }
+
+    if (st) {
+      if (dev_id[0] == '\0') {
+        json_id_to_string(cJSON_GetObjectItem(st, "id"), dev_id, sizeof(dev_id));
       }
+      cJSON *b = cJSON_GetObjectItem(st, "brand");
+      cJSON *p = cJSON_GetObjectItem(st, "power");
+      cJSON *t = cJSON_GetObjectItem(st, "temp");
+      cJSON *m = cJSON_GetObjectItem(st, "mode");
+      cJSON *f = cJSON_GetObjectItem(st, "fan");
 
-      if (st) {
-        cJSON *b = cJSON_GetObjectItem(st, "brand");
-        cJSON *p = cJSON_GetObjectItem(st, "power");
-        cJSON *t = cJSON_GetObjectItem(st, "temp");
-        cJSON *m = cJSON_GetObjectItem(st, "mode");
-        cJSON *f = cJSON_GetObjectItem(st, "fan");
+      if (b) brand = b->valueint;
+      if (p) power = p->valueint;
+      if (t) temp = t->valueint;
+      if (m) mode = m->valueint;
+      if (f) fan = f->valueint;
+      found_state = true;
 
-        if (b)
-          brand = b->valueint;
-        if (p)
-          power = p->valueint;
-        if (t)
-          temp = t->valueint;
-        if (m)
-          mode = m->valueint;
-        if (f)
-          fan = f->valueint;
-        found_state = true;
-
-        if (st != meta)
-          cJSON_Delete(st);
-      }
+      if (st != meta) cJSON_Delete(st);
     }
   }
 
-  else if (strcmp(evt_str, "AC_CONTROL") == 0) {
+  // 2. Kiểm tra trong action (phổ biến ở AC_CONTROL)
+  if (!found_state) {
     cJSON *action = cJSON_GetObjectItem(msg, "action");
     if (action) {
       cJSON *act = NULL;
@@ -985,47 +982,70 @@ static void parse_ws_device_message(cJSON *msg) {
       }
 
       if (act) {
+        if (dev_id[0] == '\0') {
+          json_id_to_string(cJSON_GetObjectItem(act, "id"), dev_id, sizeof(dev_id));
+        }
         cJSON *b = cJSON_GetObjectItem(act, "brand");
         cJSON *p = cJSON_GetObjectItem(act, "power");
         cJSON *t = cJSON_GetObjectItem(act, "temp");
         cJSON *m = cJSON_GetObjectItem(act, "mode");
         cJSON *f = cJSON_GetObjectItem(act, "fan");
 
-        if (b)
-          brand = b->valueint;
-        if (p)
-          power = p->valueint;
-        if (t)
-          temp = t->valueint;
-        if (m)
-          mode = m->valueint;
-        if (f)
-          fan = f->valueint;
+        if (b) brand = b->valueint;
+        if (p) power = p->valueint;
+        if (t) temp = t->valueint;
+        if (m) mode = m->valueint;
+        if (f) fan = f->valueint;
         found_state = true;
 
-        if (act != action)
-          cJSON_Delete(act);
+        if (act != action) cJSON_Delete(act);
       }
     }
   }
 
+  // 3. Kiểm tra trong value (chuỗi JSON lưu trạng thái của Hunonic)
+  if (!found_state) {
+    cJSON *val = cJSON_GetObjectItem(msg, "value");
+    if (val) {
+      cJSON *v_json = NULL;
+      if (cJSON_IsString(val) && val->valuestring) {
+        v_json = cJSON_Parse(val->valuestring);
+      } else if (cJSON_IsObject(val)) {
+        v_json = val;
+      }
+
+      if (v_json) {
+        cJSON *b = cJSON_GetObjectItem(v_json, "brand");
+        cJSON *p = cJSON_GetObjectItem(v_json, "power");
+        cJSON *t = cJSON_GetObjectItem(v_json, "temp");
+        cJSON *m = cJSON_GetObjectItem(v_json, "mode");
+        cJSON *f = cJSON_GetObjectItem(v_json, "fan");
+
+        if (b) brand = b->valueint;
+        if (p) power = p->valueint;
+        if (t) temp = t->valueint;
+        if (m) mode = m->valueint;
+        if (f) fan = f->valueint;
+        found_state = true;
+
+        if (v_json != val) cJSON_Delete(v_json);
+      }
+    }
+  }
+
+  // 4. Kiểm tra trực tiếp các trường trong root message
   if (!found_state) {
     cJSON *b = cJSON_GetObjectItem(msg, "brand");
     cJSON *p = cJSON_GetObjectItem(msg, "power");
     cJSON *t = cJSON_GetObjectItem(msg, "temp");
     cJSON *m = cJSON_GetObjectItem(msg, "mode");
     cJSON *f = cJSON_GetObjectItem(msg, "fan");
-    if (b)
-      brand = b->valueint;
+    if (b) brand = b->valueint;
     if (p || t) {
-      if (p)
-        power = p->valueint;
-      if (t)
-        temp = t->valueint;
-      if (m)
-        mode = m->valueint;
-      if (f)
-        fan = f->valueint;
+      if (p) power = p->valueint;
+      if (t) temp = t->valueint;
+      if (m) mode = m->valueint;
+      if (f) fan = f->valueint;
       found_state = true;
     }
   }

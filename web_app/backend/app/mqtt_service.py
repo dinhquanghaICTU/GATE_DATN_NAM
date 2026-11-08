@@ -104,13 +104,7 @@ def on_message(client, userdata, msg):
 
                 if ac_count == 0:
                     _ac_inventory_ids = set()
-                elif ac_count == 1 and ac_id_val:
-                    _ac_inventory_ids = {str(ac_id_val)}
-                    previous_devices = latest_gateway_status.get("ac_devices", {})
-                    latest_gateway_status["ac_devices"] = {
-                        key: value for key, value in previous_devices.items()
-                        if key in _ac_inventory_ids
-                    }
+                    latest_gateway_status["ac_devices"] = {}
                 elif ac_count is not None and _ac_inventory_ids is not None and ac_count != len(_ac_inventory_ids):
                     _ac_inventory_ids = None
 
@@ -249,37 +243,39 @@ def on_message(client, userdata, msg):
                         }
 
             elif evt == "ac_state":
-                incoming_id = str(data.get("id", ""))
-                if _ac_inventory_ids is not None and incoming_id not in _ac_inventory_ids:
-                    logger.warning("Ignoring AC state for ID outside current inventory: %s", incoming_id)
+                aid = str(data.get("id", ""))
+                if not aid:
                     return
+                if _ac_inventory_ids is not None:
+                    _ac_inventory_ids.add(aid)
+
                 latest_gateway_status["online"] = True
                 latest_gateway_status["last_seen"] = now.isoformat()
-                aid = str(data.get("id", ""))
-                if aid:
-                    if "ac_devices" not in latest_gateway_status:
-                        latest_gateway_status["ac_devices"] = {}
-                    dev_entry = latest_gateway_status["ac_devices"].get(aid, {
-                        "id": aid,
-                        "name": data.get("name", f"Điều hòa {aid}"),
-                        "brand": data.get("brand", 0),
-                        "power": 0,
-                        "temp": 25,
-                        "mode": 2,
-                        "fan": 0,
-                        "online": True
-                    })
-                    if "brand" in data and data["brand"]: dev_entry["brand"] = data["brand"]
-                    if "name" in data and data["name"]: dev_entry["name"] = data["name"]
-                    if "power" in data: dev_entry["power"] = data["power"]
-                    if "temp" in data and data["temp"] > 0: dev_entry["temp"] = data["temp"]
-                    if "mode" in data: dev_entry["mode"] = data["mode"]
-                    if "fan" in data: dev_entry["fan"] = data["fan"]
-                    if "brand" in data: dev_entry["brand"] = data["brand"]
-                    dev_entry["online"] = True
-                    latest_gateway_status["ac_devices"][aid] = dev_entry
 
-                    # Cập nhật thêm vào active ac_id
+                if "ac_devices" not in latest_gateway_status:
+                    latest_gateway_status["ac_devices"] = {}
+                dev_entry = latest_gateway_status["ac_devices"].get(aid, {
+                    "id": aid,
+                    "name": data.get("name", f"Điều hòa {aid}"),
+                    "brand": data.get("brand", 0),
+                    "power": 0,
+                    "temp": 25,
+                    "mode": 1,
+                    "fan": 0,
+                    "online": True
+                })
+                if "brand" in data and data["brand"]: dev_entry["brand"] = data["brand"]
+                if "name" in data and data["name"]: dev_entry["name"] = data["name"]
+                if "power" in data: dev_entry["power"] = data["power"]
+                if "temp" in data and data["temp"] > 0: dev_entry["temp"] = data["temp"]
+                if "mode" in data: dev_entry["mode"] = data["mode"]
+                if "fan" in data: dev_entry["fan"] = data["fan"]
+                if "brand" in data: dev_entry["brand"] = data["brand"]
+                dev_entry["online"] = True
+                latest_gateway_status["ac_devices"][aid] = dev_entry
+
+                # Cập nhật thêm vào active ac_id nếu trùng hoặc nếu chưa có active ID
+                if not latest_gateway_status.get("ac_id") or latest_gateway_status.get("ac_id") == aid:
                     latest_gateway_status["ac_id"] = aid
                     latest_gateway_status["ac_name"] = dev_entry["name"]
                     latest_gateway_status["ac_power"] = dev_entry["power"]
@@ -287,6 +283,8 @@ def on_message(client, userdata, msg):
                     latest_gateway_status["ac_mode"] = dev_entry["mode"]
                     latest_gateway_status["ac_fan"] = dev_entry["fan"]
                     latest_gateway_status["ac_brand"] = dev_entry["brand"]
+
+                logger.info(f"✅ [AC STATE SYNC] Điều hòa [{aid}] '{dev_entry.get('name')}': Power={dev_entry.get('power')}, Temp={dev_entry.get('temp')}°C, Mode={dev_entry.get('mode')}, Fan={dev_entry.get('fan')}")
 
             elif evt in ("ota_progress", "ota_status"):
                 latest_gateway_status["online"] = True
