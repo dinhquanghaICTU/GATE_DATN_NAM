@@ -144,7 +144,7 @@ document.addEventListener("DOMContentLoaded", () => {
     batt: 0,
     presence: 0,
     hasData: false,
-    isOnline: true
+    isOnline: false
   };
 
   let isGatewayOnline = false;
@@ -1970,10 +1970,11 @@ document.addEventListener("DOMContentLoaded", () => {
     // 1. Trạm IR: Phải kết nối được Gateway VÀ trạm IR thực tế đang cắm điện, trực tuyến trên Hunonic Cloud
     const isIrHubScanned = Boolean(isGatewayOnline && gwMetrics.ac_online === true);
 
-    // 2. Node C3: Phải kết nối được Gateway VÀ có bản tin sóng ESP-NOW thực tế gửi về
+    // 2. Node C3: Phải kết nối được Gateway VÀ Node C3 thực tế đang trực tuyến (Online) gửi bản tin gần đây (trong 60s)
     const isSensorScanned = Boolean(
       isGatewayOnline &&
       sensorData.hasData &&
+      sensorData.isOnline === true &&
       (sensorData.temp > 0 || sensorData.hum > 0 || sensorData.batt > 0)
     );
 
@@ -3409,9 +3410,11 @@ document.addEventListener("DOMContentLoaded", () => {
         });
       }
 
-      // 2. Node Cảm Biến ESP-NOW: CHỈ HIỆN KHI THỰC SỰ CÓ DỮ LIỆU NHẬN ĐƯỢC TỪ NODE C3
+      // 2. Node Cảm Biến ESP-NOW: CHỈ HIỆN KHI THỰC SỰ CÓ DỮ LIỆU VÀ ĐANG TRỰC TUYẾN (ONLINE)
       const hasRealSensor = Boolean(
+        isGatewayOnline &&
         sensorData.hasData && 
+        sensorData.isOnline === true &&
         (sensorData.temp > 0 || sensorData.hum > 0 || sensorData.batt > 0)
       );
       if (hasRealSensor) {
@@ -3894,7 +3897,7 @@ document.addEventListener("DOMContentLoaded", () => {
         sensorData.lastSeen = s.last_seen;
 
         // Quy tắc: 1 phút (60s) không thấy node phản hồi mới tính là offline
-        const isNodeOnline = (s.is_online !== undefined) ? Boolean(s.is_online) : (s.seconds_ago !== undefined ? s.seconds_ago <= 60 : true);
+        const isNodeOnline = (s.is_online !== undefined) ? Boolean(s.is_online) : (s.seconds_ago !== undefined ? s.seconds_ago <= 60 : false);
         sensorData.isOnline = isNodeOnline;
         handlePresenceNotification();
 

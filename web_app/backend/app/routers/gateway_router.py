@@ -256,19 +256,20 @@ def get_discovered_devices(current_user: dict = Depends(get_current_user)):
                 s_dt = s_dt.replace(tzinfo=timezone.utc)
             seconds_ago = (datetime.now(timezone.utc) - s_dt).total_seconds()
             node_online = (seconds_ago <= 60)
-            val2_val = latest_sensor_data.get('val2', 0)
-            val2_label = "Áp suất" if val2_val > 120 else "Độ ẩm"
-            val2_unit = "hPa" if val2_val > 120 else "%"
-            devices.append({
-                "id": f"node_espnow_{latest_sensor_data.get('node_id', 1)}",
-                "name": f"Node Cảm Biến #{latest_sensor_data.get('node_id', 1)} (ESP-NOW)",
-                "type": "sensor",
-                "source": "ESP-NOW 2.4GHz",
-                "mac": latest_sensor_data.get("mac", "ESP-NOW"),
-                "online": node_online,
-                "seconds_ago": max(0, int(seconds_ago)),
-                "details": f"Nhiệt độ: {latest_sensor_data.get('val1', 0):.1f}°C • {val2_label}: {val2_val:.1f} {val2_unit} • Pin: {latest_sensor_data.get('battery', 0):.2f}V"
-            })
+            if node_online:
+                val2_val = latest_sensor_data.get('val2', 0)
+                val2_label = "Áp suất" if val2_val > 120 else "Độ ẩm"
+                val2_unit = "hPa" if val2_val > 120 else "%"
+                devices.append({
+                    "id": f"node_espnow_{latest_sensor_data.get('node_id', 1)}",
+                    "name": f"Node Cảm Biến #{latest_sensor_data.get('node_id', 1)} (ESP-NOW)",
+                    "type": "sensor",
+                    "source": "ESP-NOW 2.4GHz",
+                    "mac": latest_sensor_data.get("mac", "ESP-NOW"),
+                    "online": True,
+                    "seconds_ago": max(0, int(seconds_ago)),
+                    "details": f"Nhiệt độ: {latest_sensor_data.get('val1', 0):.1f}°C • {val2_label}: {val2_val:.1f} {val2_unit} • Pin: {latest_sensor_data.get('battery', 0):.2f}V"
+                })
         except Exception:
             pass
 
